@@ -7,6 +7,7 @@ E_NO_USERNAME = 1
 E_INVALID_PASSWORD = 2
 E_USER_NOT_LOGINED = 3
 
+
 def validate_username(username_):
     """
     valid username_: [a-zA-Z](1,10)
@@ -33,7 +34,8 @@ def validate_username(username_):
         raise Exception('username_ is None')
 
     if not (0 < len(username_) < 11):
-        raise Exception('username_(len=%d) is too short or long' % len(username_))
+        raise Exception('username_(len=%d) is too'
+                        ' short or long' % len(username_))
 
     for i_ in username_:
         if i_ not in 'abc':
@@ -65,7 +67,8 @@ def validate_password(password_):
     if password_ is None:
         raise Exception('password_ is None')
     if not (0 < len(password_) < 11):
-        raise Exception('password_(len=%d) is too short or long' % len(password_))
+        raise Exception('password_(len=%d) is'
+                        ' too short or long' % len(password_))
     for i_ in password_:
         if i_ not in 'abc':
             raise Exception('Invalid password_: ' + password_)
@@ -73,7 +76,8 @@ def validate_password(password_):
 
 def create_account(userdb_, username_, password_):
     """create_account(...) -> True|False, raise Exception on invalid username or
-    password. Once created, insert into userdb {name, password, level, gold, experience}
+    password. Once created, insert into userdb
+    {name, password, level, gold, experience}
 
     >>> userdb = {}
     >>> create_account(userdb, 'abc', 'abc')
@@ -85,7 +89,7 @@ def create_account(userdb_, username_, password_):
     validate_password(password_)
     print '[+] username_:', username_
     print '[+] password_:', password_
-    exit =  userdb_.get(username_)
+    userdb_.get(username_)
     if userdb_.get(username_):
         print '[-] username_: %s exits' % username_
         return False
@@ -93,12 +97,12 @@ def create_account(userdb_, username_, password_):
         print '[+] add username_: %s' % username_
         userdb_[username_] = password_
         new_user = {
-            'name':username_,
-            'password':password_,
-            'level':0,
-            'gold':0,
-            'experience':0
-        };
+            'name': username_,
+            'password': password_,
+            'level': 0,
+            'gold': 0,
+            'experience': 0
+        }
         userdb_[username_] = new_user
         return True
 
@@ -172,9 +176,9 @@ class Account:
         password = dict_.get('password', None)
         if not password:
             raise ValueError('There is no entry password in dict_')
-        
-        self.name = name;
-        self.password = password;
+
+        self.name = name
+        self.password = password
 
     def dump(self):
         """dump -> dict
@@ -283,7 +287,7 @@ def login(accountdb_, accountmap_, username_, password_):
     """
     validate_username(username_)
     validate_password(password_)
-    
+
     user = accountdb_.get(username_, None)
     if not user:
         print '[-] no username_: %s' % username_
@@ -315,7 +319,7 @@ def get_actor_info(username, userdb, accountmap):
     """
     pass
 
-    
+
 def handle_get_actor_info(username, userdb, accountmap):
     """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
     or None on error
@@ -409,8 +413,7 @@ def main():
                     if len(tokens) == 3:
                         try:
                             username, password = tokens[1], tokens[2]
-                            account = login(userdb, accountmap, username,
-                                            password)
+                            login(userdb, accountmap, username, password)
                         except Exception, ex:
                             print ex
                     else:
@@ -424,7 +427,8 @@ def main():
                             if account_info:
                                 print account_info
                             else:
-                                # print '[-] user is not logined'.format(username)
+                                # print '[-] user is not logined'.\
+                                #     format(username)
                                 pass
                         except Exception, ex:
                             print ex
