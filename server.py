@@ -222,8 +222,8 @@ class LevelInfo:
         pass
 
 
-class PlayerLevelInfo:
-    """PlayerLevelInfo: Per Player level stat
+class ActorLevelInfo:
+    """ActorLevelInfo: Per Player level stat
     Fields:
 
     actor_id    :int
@@ -374,19 +374,6 @@ def handle_get_account_info(username, userdb, accountmap):
     return {'name': account.name, 'actor_id': account.actor_id}, E_OK
 
 
-def handle_login(command, userdb, accountmap):
-    print '[+] login'
-
-    tokens = command.split(' ')
-    if len(tokens) == 3:
-        try:
-            account = login(userdb, accountmap, tokens[1], tokens[2])
-        except Exception, ex:
-            print ex
-    else:
-        print '[-] syntax error: login username password'
-
-
 def main():
     """main flow ([+] are requests)
 
@@ -419,7 +406,15 @@ def main():
             if command:
                 tokens = command.split(' ')
                 if tokens[0] == 'login':
-                    handle_login(command, userdb, accountmap)
+                    if len(tokens) == 3:
+                        try:
+                            username, password = tokens[1], tokens[2]
+                            account = login(userdb, accountmap, username,
+                                            password)
+                        except Exception, ex:
+                            print ex
+                    else:
+                        print '[-] syntax error: login username password'
                 elif tokens[0] == 'get_account_info':
                     if len(tokens) == 2:
                         try:
