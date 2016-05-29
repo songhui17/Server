@@ -409,7 +409,7 @@ def handle_create_actor(username, actorname,
 
     """
     print '[+] handle_create_actor'
-    validate_password(username)
+    validate_username(username)
     account = accountmap.get(username, None)
     if not account:
         print '[-] user: {0} is not logined'.format(username)
