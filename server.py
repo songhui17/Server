@@ -5,6 +5,7 @@
 E_OK = 0
 E_NO_USERNAME = 1
 E_INVALID_PASSWORD = 2
+E_USER_NOT_LOGINED = 3
 
 def validate_username(username_):
     """
@@ -150,6 +151,17 @@ class Account:
     def __init__(self):
         pass
 
+    def __eq__(self):
+        pass
+
+    def __str__(self):
+        """dump -> string
+        """
+        info = ''
+        info += 'logined: {0}\n'.format(self.logined)
+        info += 'name: {0}\n'.format(self.name)
+        return info
+
     def load(self, dict_):
         """load(dict_) init from dict_
         """
@@ -164,7 +176,6 @@ class Account:
         self.name = name;
         self.password = password;
 
-
     def dump(self):
         """dump -> dict
         """
@@ -172,9 +183,6 @@ class Account:
         ret['name'] = self.name
         ret['password'] = self.password
         return ret
-
-    def __eq__(self):
-        pass
 
     def login(self, password_):
         """login() -> T|F
@@ -196,14 +204,6 @@ class Account:
         """
         if not self.logined:
             raise Exception('User is not logined')
-
-    def __str__(self):
-        """dump -> string
-        """
-        info = ''
-        info += 'logined: {0}\n'.format(self.logined)
-        info += 'name: {0}\n'.format(self.name)
-        return info
 
 
 class LevelInfo:
@@ -272,15 +272,8 @@ class Actor:
         ret['experience'] = self.experience
         return ret
 
-def get_actor_info(accountdb_, username_):
-    validate_username(username_)
-    account = accountdb_.get(username_, None)
-    if not account:
-        return
 
-    pass
-
-def login(accountdb_, accountdb_, username_, password_):
+def login(accountdb_, accountmap_, username_, password_):
     """login -> account or None when no username_
     Exception:
 
@@ -296,21 +289,102 @@ def login(accountdb_, accountdb_, username_, password_):
         print '[-] no username_: %s' % username_
         return None
 
-    account = accountdb_.get(username_, None)
+    account = accountmap_.get(username_, None)
     if not account:
+        print '[+] Create Account for ', username_
         account = Account()
         account.load(user)
         account.userdb = accountdb_
 
-        accountdb_[username_] = account
+        accountmap_[username_] = account
 
     if not account.login(password_):
         print '[-] invalid password'
         return None
 
-    print 'account:'
+    print 'account logined:'
     print str(account)
     return account
+
+
+def get_actor_info(username, userdb, accountmap):
+    """get_actor_info: -> E
+    Exception:
+
+    InvalidUsername
+    """
+    pass
+
+    
+def handle_get_actor_info(username, userdb, accountmap):
+    """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
+    or None on error
+
+    Error number:
+
+    E_OK
+    E_USER_NOT_LOGINED
+
+    Exception:
+
+    InvalidUsername
+
+    """
+    print '[+] handle_get_actor_info'
+    try:
+        validate_username(username)
+        account = accountmap.get(username, None)
+        if not account:
+            print '[-] user: {0} is not logined'.format(username)
+            return None, E_USER_NOT_LOGINED
+
+        actor_id = account.actor_id
+        if actor_id == -1:
+            print '[-] no actor for this account', account.name
+            return None, E_OK
+
+        raise NotImplemented()
+
+    except Exception, ex:
+        print '[-]', ex
+        raise ex
+
+
+def handle_get_account_info(username, userdb, accountmap):
+    """handle_get_account_info -> E_NO | dict {name, actor_id}
+    or None on error
+
+    Error Number:
+
+    E_OK
+    E_USER_NOT_LOGINED
+
+    Exception:
+
+    InvalidUsername
+
+    """
+    print '[+] handle_get_account_info'
+    validate_username(username)
+    account = accountmap.get(username, None)
+    if not account:
+        print '[-] user: {0} is not logined'.format(username)
+        return None, E_USER_NOT_LOGINED
+
+    return {'name': account.name, 'actor_id': account.actor_id}, E_OK
+
+
+def handle_login(command, userdb, accountmap):
+    print '[+] login'
+
+    tokens = command.split(' ')
+    if len(tokens) == 3:
+        try:
+            account = login(userdb, accountmap, tokens[1], tokens[2])
+        except Exception, ex:
+            print ex
+    else:
+        print '[-] syntax error: login username password'
 
 
 def main():
@@ -339,27 +413,50 @@ def main():
     try:
         while True:
             # TODO
-            print('>')
+            print '>',
             command = raw_input()
 
             if command:
                 tokens = command.split(' ')
                 if tokens[0] == 'login':
-                    print '[+] login'
-                    if len(tokens) == 3:
+                    handle_login(command, userdb, accountmap)
+                elif tokens[0] == 'get_account_info':
+                    if len(tokens) == 2:
                         try:
-                            account = login(userdb, accountmap, tokens[1], tokens[2])
+                            username = tokens[1]
+                            account_info, errno = handle_get_account_info(
+                                username, userdb, accountmap)
+                            if account_info:
+                                print account_info
+                            else:
+                                # print '[-] user is not logined'.format(username)
+                                pass
                         except Exception, ex:
                             print ex
                     else:
-                        print '[-] syntax error: login username password'
+                        print '[-] syntax error: get_account_info username'
                 elif tokens[0] == 'get_actor_info':
+                    if len(tokens) == 2:
+                        try:
+                            username = tokens[1]
+                            actor_info, errno = handle_get_actor_info(
+                                username, userdb, accountmap)
+                            if actor_info:
+                                print 'actor_info:', actor_info
+                            else:
+                                # user not logined
+                                pass
+                        except Exception, ex:
+                            print ex
+                    else:
+                        print '[-] syntax error: get_actor_info username'
+                elif tokens[0] == 'create_actor':
                     pass
+                elif tokens[0] == 'exit':
+                    print '[+] exit, 88'
+                    break
     except Exception, ex:
         print ex
-    # actor_id = create_actor(userdb, actordb, 'abc', 0)
-    # actor = Actor()
-    # actor.load(actordb[actor_id])
 
 
 if __name__ == '__main__':
