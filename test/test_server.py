@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os, sys; sys.path.append(os.getcwd())
 import unittest
 
@@ -24,7 +25,7 @@ class ServerTest(unittest.TestCase):
 
         # Success
         ret = server.login(userdb, 'abc', 'abc')
-        self.assertTrue(ret, (True, server.E_OK))
+        self.assertEqual(ret, (True, server.E_OK))
 
         # Failure
         ret = server.login(userdb, 'abc', 'ab')
