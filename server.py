@@ -6,6 +6,7 @@ E_OK = 0
 E_NO_USERNAME = 1
 E_INVALID_PASSWORD = 2
 E_USER_NOT_LOGINED = 3
+E_ACTOR_EXIST = 4
 
 
 def validate_username(username_):
@@ -244,13 +245,25 @@ class Actor:
     """Actor:
     Fields
 
-        level       :int
-        gold        :int
-        experience  :int
+    actor_id    :int
+    name        :int
+    level       :int
+    gold        :int
+    experience  :int
+
     """
 
     def __init__(self):
         pass
+
+    def __str__(self):
+        info = ''
+        info += 'actor_id: {0}\n'.format(self.actor_id)
+        info += 'name: {0}\n'.format(self.name)
+        info += 'level: {0}\n'.format(self.level)
+        info += 'gold: {0}\n'.format(self.gold)
+        info += 'experience: {0}\n'.format(self.experience)
+        return info
 
     def load(self, dict_):
         level = dict_.get('level', -1)
@@ -378,6 +391,59 @@ def handle_get_account_info(username, userdb, accountmap):
     return {'name': account.name, 'actor_id': account.actor_id}, E_OK
 
 
+def handle_create_actor(username, actorname,
+                        accountmap, actordb, actormap):
+    """handle_create_actor -> T|F, E_NO
+    :insert into actordb, create instance into actormap
+
+    Error number:
+
+    E_OK
+    E_USER_NOT_LOGINED
+    E_ACTOR_EXIST
+
+    Exception:
+
+    InvalidUsername
+    ActorIDConflict
+
+    """
+    print '[+] handle_create_actor'
+    validate_password(username)
+    account = accountmap.get(username, None)
+    if not account:
+        print '[-] user: {0} is not logined'.format(username)
+        return False, E_USER_NOT_LOGINED
+
+    if account.actor_id != -1:
+        return False, E_ACTOR_EXIST
+
+    actor = Actor()
+    actor.actor_id = 0
+    actor.name = actorname
+    actor.level = 1
+    actor.gold = 100
+    actor.experience = 0
+
+    if actor.actor_id in actordb:
+        info = 'actor_id: {0} conflict for {1}'.format(
+            actor.actor_id, actorname)
+        print '[-]', info
+        raise Exception(info)
+
+    actordb[actor.actor_id] = {
+        'actor_id': actor.actor_id,
+        'name': actor.name,
+        'level': actor.level,
+        'gold': actor.gold,
+        'experience': actor.experience
+    }
+    actormap[actor.actor_id] = actor
+    account.actor_id = actor.actor_id
+    print actor
+    return True, E_OK
+
+
 def main():
     """main flow ([+] are requests)
 
@@ -398,9 +464,11 @@ def main():
     """
     userdb = {}
     create_account(userdb, 'abc', 'abc')
-    actordb = {}
-
     accountmap = {}
+
+    actordb = {}
+    actormap = {}
+
     try:
         while True:
             # TODO
@@ -450,7 +518,22 @@ def main():
                     else:
                         print '[-] syntax error: get_actor_info username'
                 elif tokens[0] == 'create_actor':
-                    pass
+                    if len(tokens) == 3:
+                        try:
+                            username = tokens[1]
+                            actorname = tokens[2]
+                            ret, errno = handle_create_actor(username, actorname,
+                                                accountmap, actordb, actormap)
+                            if not ret:
+                                print '[-] failed to create actor',\
+                                    'errno:', errno
+                        except Exception, ex:
+                            print ex
+                    else:
+                        print '[-] syntax error:',\
+                            'create_actor username actor_name := [sniper]'
+                elif tokens[0] == 'break':
+                    import pdb; pdb.set_trace()
                 elif tokens[0] == 'exit':
                     print '[+] exit, 88'
                     break
