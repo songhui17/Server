@@ -1,12 +1,17 @@
 #!/usr/bin/env python
+import time
+import select
+import argparse
+from socket import *
+from sockutil import *
 
 
-# TODO: error code
-E_OK = 0
-E_NO_USERNAME = 1
-E_INVALID_PASSWORD = 2
-E_USER_NOT_LOGINED = 3
-E_ACTOR_EXIST = 4
+E_OK = 0                    # success
+E_NO_USERNAME = 1           # no account with name username
+E_INVALID_PASSWORD = 2      # invalid password
+E_USER_NOT_LOGINED = 3      # user has not logined, login required
+E_ACTOR_EXIST = 4           # actor already bound to account
+E_ACTOR_NOT_CREATED = 5     # actor_id == -1, no actor bound to account
 
 
 def validate_username(username_):
@@ -215,12 +220,13 @@ class LevelInfo:
     """LevelInfo
     Fields:
 
+    level_id    :int
     title       :string
     task1       :string
     task2       :string
     task3       :string
 
-    banuses     :list<string>
+    bonuses     :list<string>
     """
 
     def __init__(self):
@@ -228,17 +234,61 @@ class LevelInfo:
 
 
 class ActorLevelInfo:
-    """ActorLevelInfo: Per Player level stat
+    """ActorLevelInfo: Per Actor level stat
     Fields:
 
     actor_id    :int
 
+    level_id    :int
     passed      :bool
-    stars       :int[0,3]
+    star1      :bool
+    star2      :bool
+    star3      :bool
     """
 
     def __init__(self):
         pass
+
+    def _copy(self, copy):
+        self.actor_id = copy.actor_id
+        self.level_id = copy.level_id
+        self.passed = copy.passed
+        self.star1 = copy.star1
+        self.star2 = copy.star2
+        self.star3 = copy.star3
+
+    def load(self, data):
+        """load :from data
+
+        Exception:
+
+        KeyError
+        """
+        try:
+            tmp = ActorLevelInfo()
+            tmp.actor_id = data.get('actor_id')
+            tmp.level_id = data.get('level_id')
+            tmp.passed = data.get('passed')
+            tmp.star1 = data.get('star1')
+            tmp.star2 = data.get('star2')
+            tmp.star3 = data.get('star3')
+
+            self.copy(tmp)
+        except KeyError, ex:
+            print '[-]', ex
+            raise ex
+
+    def dump(self):
+        """dump -> dict{actor_id, level_id, passed, star1, star2, star3}
+        """
+        ret = {}
+        ret['actor_id'] = self.actor_id
+        ret['level_id'] = self.level_id
+        ret['passed'] = self.passed
+        ret['star1'] = self.star1
+        ret['star2'] = self.star2
+        ret['star3'] = self.star3
+        return ret
 
 
 class Actor:
@@ -265,90 +315,245 @@ class Actor:
         info += 'experience: {0}\n'.format(self.experience)
         return info
 
+    def _copy(self, copy):
+        self.actor_id = tmp.actor_id
+        self.name = tmp.name
+        self.level = tmp.level
+        self.gold = tmp.gold
+        self.experience = tmp.experience
+
     def load(self, dict_):
-        level = dict_.get('level', -1)
-        if level < 0:
-            raise ValueError('There is no entry level in dict_')
+        try:
+            tmp.actor_id = dict_.get('actor_id')
+            tmp.name = dict_.get('name')
+            tmp.level = dict_.get('level')
+            tmp.gold = dict_.get('gold')
+            tmp.experience = dict_.get('experience')
 
-        gold = dict_.get('gold', -1)
-        if gold < 0:
-            raise ValueError('There is no entry gold in dict_')
-
-        experience = dict_.get('experience', -1)
-        if experience < 0:
-            raise ValueError('There is no entry experience in dict_')
-
-        self.level = level
-        self.gold = gold
-        self.experience = experience
+            self._copy(tmp)
+        except KeyError, ex:
+            print '[-] Failed to load: ', ex
+            raise ex
 
     def dump(self):
         ret = {}
+        ret['actor_id'] = self.actor_id
+        ret['name'] = self.name
         ret['level'] = self.level
         ret['gold'] = self.gold
         ret['experience'] = self.experience
         return ret
 
 
-def login(accountdb_, accountmap_, username_, password_):
-    """login -> account or None when no username_
-    Exception:
 
-        Invalid username
-        Invalid password
+class Server:
+    def __init__(self):
+        pass
 
-    """
-    validate_username(username_)
-    validate_password(password_)
+    def handle_login(self, username_, password_):
+        """login -> account or None when no username_, errno, create actor instance in
+        actormap_ if there is actor bound to this account
 
-    user = accountdb_.get(username_, None)
-    if not user:
-        print '[-] no username_: %s' % username_
-        return None
+        ErrorNo:
 
-    account = accountmap_.get(username_, None)
-    if not account:
-        print '[+] Create Account for ', username_
-        account = Account()
-        account.load(user)
-        account.userdb = accountdb_
+        E_OK
+        E_NO_USERNAME
+        E_INVALID_PASSWORD
 
-        accountmap_[username_] = account
+        Exception:
 
-    if not account.login(password_):
-        print '[-] invalid password'
-        return None
+            Invalid username
+            Invalid password
 
-    print 'account logined:'
-    print str(account)
-    return account
+        """
+        accountdb_ = self.accountdb
+        accountmap_ = self.accountmap
+        actordb_ = self.actordb
+        actormap_ = self.actormap
+
+        validate_username(username_)
+        validate_password(password_)
+
+        user = accountdb_.get(username_, None)
+        if not user:
+            print '[-] no username_: %s' % username_
+            return None, E_NO_USERNAME
+
+        account = accountmap_.get(username_, None)
+        if not account:
+            print '[+] Create Account for ', username_
+            account = Account()
+            account.load(user)
+            account.userdb = accountdb_
+
+            accountmap_[username_] = account
+
+        if not account.login(password_):
+            print '[-] invalid password'
+            return None, E_INVALID_PASSWORD
+
+        print 'account logined:'
+        print str(account)
+
+        if account.actor_id != -1:
+            actor_data = actordb_.get(account.actor_id, None)
+            if not actor:
+                info = 'Fatal error: actor_id: {0} doesnt exist in'\
+                    ' database'.format(account.actor_id)
+                raise Exception(info)
+            actor = Actor()
+            actor.load(actor_data)
+            actormap_[actor.actor_id] = actor
+        return account, E_OK
 
 
-def get_actor_info(username, userdb, accountmap):
-    """get_actor_info: -> E
-    Exception:
+    def handle_get_actor_info(self, username):
+        """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
+        or None on error
 
-    InvalidUsername
-    """
-    pass
+        Error number:
+
+        E_OK
+        E_USER_NOT_LOGINED
+
+        Exception:
+
+        InvalidUsername
+        ActorNotExistInDB
+
+        """
+        print '[+] handle_get_actor_info'
+        accountdb = self.accountdb
+        accountmap = self.accountmap
+        actordb = self.actordb
+        actormap = self.actormap
+
+        try:
+            validate_username(username)
+            account = accountmap.get(username, None)
+            if not account:
+                print '[-] user: {0} is not logined'.format(username)
+                return None, E_USER_NOT_LOGINED
+
+            actor_id = account.actor_id
+            if actor_id == -1:
+                print '[-] no actor for this account', account.name
+                return None, E_ACTOR_NOT_CREATED
+
+            actor = actormap.get(actor_id, None)
+            if not actor:
+                print '[+] Create Actor instance'
+                actor_data = actordb.get(actor_id, None)
+                if not actor_data:
+                    # TODO: should assert actor_data not None?
+                    info = 'Fatal error: actor_id: {0} doesnt exist in'\
+                        ' database'.format(account.actor_id)
+                    raise Exception(info)
+                actor = Actor()
+                actor.load(actor_data)
+                actormap[actor_id, actor]
+            return actor.dump(), E_OK
+
+        except Exception, ex:
+            print '[-]', ex
+            raise ex
 
 
-def handle_get_actor_info(username, userdb, accountmap):
-    """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
-    or None on error
+    def handle_get_account_info(self, username):
+        """handle_get_account_info -> E_NO | dict {name, actor_id}
+        or None on error
 
-    Error number:
+        Error Number:
 
-    E_OK
-    E_USER_NOT_LOGINED
+        E_OK
+        E_USER_NOT_LOGINED
 
-    Exception:
+        Exception:
 
-    InvalidUsername
+        InvalidUsername
 
-    """
-    print '[+] handle_get_actor_info'
-    try:
+        """
+        accountmap = self.accountmap
+
+        print '[+] handle_get_account_info'
+        validate_username(username)
+        account = accountmap.get(username, None)
+        if not account:
+            print '[-] user: {0} is not logined'.format(username)
+            return None, E_USER_NOT_LOGINED
+
+        return {'name': account.name, 'actor_id': account.actor_id}, E_OK
+
+
+    def handle_create_actor(self, username, actorname):
+        """handle_create_actor -> T|F, E_NO
+        :insert into actordb, create instance into actormap
+
+        Error number:
+
+        E_OK
+        E_USER_NOT_LOGINED
+        E_ACTOR_EXIST
+
+        Exception:
+
+        InvalidUsername
+        ActorIDConflict
+
+        """
+        print '[+] handle_create_actor'
+        accountmap = self.accountmap
+        actordb = self.actordb
+        actormap = self.actormap
+
+        validate_username(username)
+        account = accountmap.get(username, None)
+        if not account:
+            print '[-] user: {0} is not logined'.format(username)
+            return False, E_USER_NOT_LOGINED
+
+        if account.actor_id != -1:
+            return False, E_ACTOR_EXIST
+
+        actor = Actor()
+        actor.actor_id = 0
+        actor.name = actorname
+        actor.level = 1
+        actor.gold = 100
+        actor.experience = 0
+
+        if actor.actor_id in actordb:
+            info = 'actor_id: {0} conflict for {1}'.format(
+                actor.actor_id, actorname)
+            print '[-]', info
+            raise Exception(info)
+
+        actordb[actor.actor_id] = actor.dump()
+        actormap[actor.actor_id] = actor
+        account.actor_id = actor.actor_id
+        print actor
+        return True, E_OK
+
+
+    def handle_get_actor_level_info(self, username):
+        """handle_get_actor_info -> dict{} or None on error, errno
+
+        Error Number:
+
+        E_OK
+        E_USER_NOT_LOGINED
+
+        Exception:
+
+        InvalidUsername
+
+        """
+        print '[+] handle_get_actor_level_info'
+        print '[X] TODO: copy from get_actor_info'
+        accountmap = self.accountmap
+        actormap = self.actormap
+        actorleveldb = self.actorleveldb
+
         validate_username(username)
         account = accountmap.get(username, None)
         if not account:
@@ -358,188 +563,301 @@ def handle_get_actor_info(username, userdb, accountmap):
         actor_id = account.actor_id
         if actor_id == -1:
             print '[-] no actor for this account', account.name
-            return None, E_OK
+            return None, E_ACTOR_NOT_CREATED
 
-        raise NotImplemented()
+        actor = actormap.get(actor_id, None)
+        if not actor:
+            print '[+] Create Actor instance'
+            actor_data = actordb.get(actor_id, None)
+            if not actor_data:
+                # TODO: should assert actor_data not None?
+                info = 'Fatal error: actor_id: {0} doesnt exist in'\
+                    ' database'.format(account.actor_id)
+                raise Exception(info)
+            actor = Actor()
+            actor.load(actor_data)
+            actormap[actor_id, actor]
 
-    except Exception, ex:
-        print '[-]', ex
-        raise ex
-
-
-def handle_get_account_info(username, userdb, accountmap):
-    """handle_get_account_info -> E_NO | dict {name, actor_id}
-    or None on error
-
-    Error Number:
-
-    E_OK
-    E_USER_NOT_LOGINED
-
-    Exception:
-
-    InvalidUsername
-
-    """
-    print '[+] handle_get_account_info'
-    validate_username(username)
-    account = accountmap.get(username, None)
-    if not account:
-        print '[-] user: {0} is not logined'.format(username)
-        return None, E_USER_NOT_LOGINED
-
-    return {'name': account.name, 'actor_id': account.actor_id}, E_OK
+        level_data = [v for k, v in actorleveldb if k[0] == actor_id]
+        # TODO: handle empty
+        return level_data
 
 
-def handle_create_actor(username, actorname,
-                        accountmap, actordb, actormap):
-    """handle_create_actor -> T|F, E_NO
-    :insert into actordb, create instance into actormap
+    def load_leveldb(self, leveldb):
+        """load_leveldb: init level database
+        """
+        leveldb[0] = {
+            'level_id': 0,
+            'title': 'level_0',
+            'task1': 'task desc 1',
+            'task2': 'task desc 2',
+            'task3': 'task desc 3',
+            'bonuses': ['a', 'b']
+        }
 
-    Error number:
+        leveldb[1] = {
+            'level_id': 1,
+            'title': 'level_1',
+            'task1': 'task desc 1',
+            'task2': 'task desc 2',
+            'task3': 'task desc 3',
+            'bonuses': ['a', 'b']
+        }
 
-    E_OK
-    E_USER_NOT_LOGINED
-    E_ACTOR_EXIST
+        leveldb[2] = {
+            'level_id': 2,
+            'title': 'level_2',
+            'task1': 'task desc 1',
+            'task2': 'task desc 2',
+            'task3': 'task desc 3',
+            'bonuses': ['a', 'b']
+        }
 
-    Exception:
+        leveldb[3] = {
+            'level_id': 3,
+            'title': 'level_3',
+            'task1': 'task desc 1',
+            'task2': 'task desc 2',
+            'task3': 'task desc 3',
+            'bonuses': ['a', 'b']
+        }
 
-    InvalidUsername
-    ActorIDConflict
 
-    """
-    print '[+] handle_create_actor'
-    validate_username(username)
-    account = accountmap.get(username, None)
-    if not account:
-        print '[-] user: {0} is not logined'.format(username)
-        return False, E_USER_NOT_LOGINED
+    def handle_login_request(self, username=None, password=None):
+        print '[-] recv login'
+        if username is not None or password is not None:
+            try:
+                ret, errno = handle_login(
+                    userdb, accountmap, username,
+                    password, actordb, actormap)
+                if errno == E_OK:
+                    send_message(
+                        client_sock, {
+                            'type': 'response',
+                            'statue': 'ok'}, None,
+                        request_id, None)
+                else:
+                    send_message(
+                        client_sock,
+                        {'type': 'response',
+                         'status': 'error',
+                         'message': 'Invalid username or'
+                             ' password'},
+                        None, request_id, None)
+            except Exception, ex:
+                send_message(
+                    client_sock,
+                    {'type': 'response',
+                     'status': 'error',
+                     'message': str(ex)},
+                    None, request_id, None)
+        else:
+            info = '[-] syntax error: login username password'
+            print info
+            send_message(
+                client_sock,
+                {'type': 'response',
+                 'status': 'error',
+                 'message': info},
+                None, request_id, None)
 
-    if account.actor_id != -1:
-        return False, E_ACTOR_EXIST
 
-    actor = Actor()
-    actor.actor_id = 0
-    actor.name = actorname
-    actor.level = 1
-    actor.gold = 100
-    actor.experience = 0
+    def main(self, args):
+        """main flow ([+] are requests)
 
-    if actor.actor_id in actordb:
-        info = 'actor_id: {0} conflict for {1}'.format(
-            actor.actor_id, actorname)
-        print '[-]', info
-        raise Exception(info)
+        (1) init account database
+        (2) init actor database
+        (3) server loop
+            1) [+] receiver account login request/command
+            2) handle login request
+            3) [+] get actor info bound to this account:
+                a) yes, return
+                b) no, create actor
+                    i. [+] create actor
+                    ii. on success, goto 3)
+                    iii.on failure, failure info
+            4) [+] get level info && [+] per actor level info
+            5) [+] start a level
+            [TODO] ...
+        """
+        print '======== mini Shoot Server ========'
+        print '[+] init account database'
+        self.accountdb = {}
+        create_account(self.accountdb, 'abc', 'abc')
+        self.accountmap = {}
 
-    actordb[actor.actor_id] = {
-        'actor_id': actor.actor_id,
-        'name': actor.name,
-        'level': actor.level,
-        'gold': actor.gold,
-        'experience': actor.experience
-    }
-    actormap[actor.actor_id] = actor
-    account.actor_id = actor.actor_id
-    print actor
-    return True, E_OK
+        print '[+] init actor database'
+        self.actordb = {}
+        self.actormap = {}
+
+        print '[+] init level database'
+        self.leveldb = {}
+        self.load_leveldb(self.leveldb)
+
+        self.actorleveldb = {}
+
+        print '[+] init listening socket'
+        listen_sock = socket(AF_INET, SOCK_STREAM)
+        print listen_sock
+        listen_sock.bind(('127.0.0.1', 10240))
+        listen_sock.listen(10)
+        print '[+] sockname:', listen_sock.getsockname()
+
+        client_sock = None
+        buf = ''
+        index = 0
+        sockutil = SockUtil()
+        sockutil.register_handler('login', self.handle_login_request)
+
+        print '[+] init done'
+        print ''
+
+        try:
+            while True:
+                # TODO
+                command = None
+                if args.command:
+                    print '>',
+                    command = raw_input()
+                else:
+                    read_socks = [listen_sock]
+                    if client_sock:
+                        read_socks.append(client_sock)
+
+                    read_socks, _, _= select.select(read_socks, [], [], 1)
+                    if client_sock in read_socks:
+                        recved = ''
+                        try:
+                            recved = client_sock.recv(1024)
+                        except Exception, ex:
+                            print ex
+
+                        print '[+] recv', buf
+                        if len(recved) == 0:
+                            print '[+] close socket', recved
+                            client_sock.close()
+                            client_sock = None
+                        
+                        buf += recved
+                        buf = buf[index:]
+                        index = 0
+                        if len(buf) >= 2:
+                            prev_index = index
+
+                            msg_length = str2short(buf[index:index+3])
+                            index+=2
+                            if msg_length > 1024:
+                                # TODO: handle and close socket
+                                raise Exception('fatal error')
+                            if msg_length < len(buf) - index:
+                                # not ready
+                                index = prev_index
+                            else:
+                                payload = buf[index:index+msg_length]
+                                index += msg_length
+                                socket.recv_message(client_sock, payload)
+
+                    if listen_sock in read_socks:
+                        if client_sock:
+                            # TODO: multi clients
+                            print '[-] multi client is not implemented',\
+                                'close the prev client'
+                            client_sock.close()
+
+                        client_sock, client_addr = listen_sock.accept()
+                        print '[+] recv client:', client_addr
+                    print '.',
+                    time.sleep(1)
+
+                if command:
+                    tokens = command.split(' ')
+                    if tokens[0] == 'login':
+                        if len(tokens) == 3:
+                            try:
+                                username, password = tokens[1], tokens[2]
+                                self.handle_login(username, password)
+                            except Exception, ex:
+                                print ex
+                        else:
+                            print '[-] syntax error: login username password'
+                    elif tokens[0] == 'get_account_info':
+                        if len(tokens) == 2:
+                            try:
+                                username = tokens[1]
+                                account_info, errno = self.handle_get_account_info(username)
+                                if account_info:
+                                    print account_info
+                                else:
+                                    # print '[-] user is not logined'.\
+                                    #     format(username)
+                                    pass
+                            except Exception, ex:
+                                print ex
+                        else:
+                            print '[-] syntax error: get_account_info username'
+                    elif tokens[0] == 'get_actor_info':
+                        if len(tokens) == 2:
+                            try:
+                                username = tokens[1]
+                                actor_info, errno = self.handle_get_actor_info(username)
+                                if actor_info:
+                                    print 'actor_info:', actor_info
+                                else:
+                                    # user not logined
+                                    pass
+                            except Exception, ex:
+                                print ex
+                        else:
+                            print '[-] syntax error: get_actor_info username'
+                    elif tokens[0] == 'create_actor':
+                        if len(tokens) == 3:
+                            try:
+                                username = tokens[1]
+                                actorname = tokens[2]
+                                ret, errno = self.handle_create_actor(username, actorname)
+                                if not ret:
+                                    print '[-] failed to create actor',\
+                                        'errno:', errno
+                            except Exception, ex:
+                                print ex
+                        else:
+                            print '[-] syntax error:',\
+                                'create_actor username actor_name := [sniper]'
+                    elif tokens[0] == 'get_actor_level_info':
+                        if len(tokens) == 2:
+                            try:
+                                username = tokens[1]
+                                ret = self.handle_get_actor_level_info(username)
+                                print ret
+                            except Exception, ex:
+                                print '[-] failed to get_actor_info:', ex
+                        else:
+                            print '[-] syntax error:'\
+                                'get_actor_level_info username'
+                    elif tokens[0] == 'break':
+                        import pdb; pdb.set_trace()
+                    elif tokens[0] == 'exit':
+                        print '[+] exit, 88'
+                        break
+        except (Exception, KeyboardInterrupt) as ex:
+            print ex
+
+        if client_sock:
+            print '[-] close client socket'
+            client_sock.close()
+
+        if listen_sock:
+            print '[-] close listening socket'
+            listen_sock.close()
 
 
 def main():
-    """main flow ([+] are requests)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--command', action='store_true')
+    args = parser.parse_args()
 
-    (1) init account database
-    (2) init actor database
-    (3) server loop
-        1) [+] receiver account login request/command
-        2) handle login request
-        3) [+] get actor info bound to this account:
-            a) yes, return
-            b) no, create actor
-                i. [+] create actor
-                ii. on success, goto 3)
-                iii.on failure, failure info
-        4) [+] get level info && [+] per actor level info
-        5) [+] start a level
-        [TODO] ...
-    """
-    userdb = {}
-    create_account(userdb, 'abc', 'abc')
-    accountmap = {}
-
-    actordb = {}
-    actormap = {}
-
-    try:
-        while True:
-            # TODO
-            print '>',
-            command = raw_input()
-
-            if command:
-                tokens = command.split(' ')
-                if tokens[0] == 'login':
-                    if len(tokens) == 3:
-                        try:
-                            username, password = tokens[1], tokens[2]
-                            login(userdb, accountmap, username, password)
-                        except Exception, ex:
-                            print ex
-                    else:
-                        print '[-] syntax error: login username password'
-                elif tokens[0] == 'get_account_info':
-                    if len(tokens) == 2:
-                        try:
-                            username = tokens[1]
-                            account_info, errno = handle_get_account_info(
-                                username, userdb, accountmap)
-                            if account_info:
-                                print account_info
-                            else:
-                                # print '[-] user is not logined'.\
-                                #     format(username)
-                                pass
-                        except Exception, ex:
-                            print ex
-                    else:
-                        print '[-] syntax error: get_account_info username'
-                elif tokens[0] == 'get_actor_info':
-                    if len(tokens) == 2:
-                        try:
-                            username = tokens[1]
-                            actor_info, errno = handle_get_actor_info(
-                                username, userdb, accountmap)
-                            if actor_info:
-                                print 'actor_info:', actor_info
-                            else:
-                                # user not logined
-                                pass
-                        except Exception, ex:
-                            print ex
-                    else:
-                        print '[-] syntax error: get_actor_info username'
-                elif tokens[0] == 'create_actor':
-                    if len(tokens) == 3:
-                        try:
-                            username = tokens[1]
-                            actorname = tokens[2]
-                            ret, errno = handle_create_actor(username, actorname,
-                                                accountmap, actordb, actormap)
-                            if not ret:
-                                print '[-] failed to create actor',\
-                                    'errno:', errno
-                        except Exception, ex:
-                            print ex
-                    else:
-                        print '[-] syntax error:',\
-                            'create_actor username actor_name := [sniper]'
-                elif tokens[0] == 'break':
-                    import pdb; pdb.set_trace()
-                elif tokens[0] == 'exit':
-                    print '[+] exit, 88'
-                    break
-    except Exception, ex:
-        print ex
-
+    server = Server()
+    server.main(args)
 
 if __name__ == '__main__':
     import doctest
