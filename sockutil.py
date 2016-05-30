@@ -24,6 +24,7 @@ def str2short(value):
 class SockUtil:
 
     callback_map = {}
+    errorcallack_map = {}
     handler_map = {}
     request_id = 0
 
@@ -59,6 +60,11 @@ class SockUtil:
             print '[+] add callback request_id:', self.request_id
             self.callback_map[self.request_id] = callback
 
+        errorcallback = kwargs.pop('onerror', None)
+        if errorcallback:
+            print '[+] add errorcallback request_id:', self.request_id
+            self.errorcallack_map[self.request_id] = errorcallback
+
         if not method:
             raise ValueError('method is None')
 
@@ -82,7 +88,6 @@ class SockUtil:
         wrapped = {
             'type': 'response',
             'request_id': request_id,
-            'status': 'ok',
             'args': args,
             'kwargs': kwargs,
         }
@@ -96,9 +101,8 @@ class SockUtil:
         sendall
         """
         wrapped = {
-            'type': 'response',
+            'type': 'error',
             'request_id': request_id,
-            'status': 'error',
             'args': args,
             'kwargs': kwargs,
         }
@@ -150,13 +154,31 @@ class SockUtil:
                 return
 
             callback = self.callback_map.pop(request_id, None)
-            if callback:
-                try:
-                    callback(sock, *args, **kwargs)
-                except:
-                    pass
-            else:
-                print '[-] no callback for request_id:', request_id
+            errorcallback = self.errorcallack_map.pop(request_id, None)
+
+            if msg_type == 'response':
+                if callback:
+                    try:
+                        callback(sock, *args, **kwargs)
+                    except Exception, ex:
+                        print '[-] failed to callback', ex
+                    except:
+                        print '[-] failed to callback'
+                else:
+                    print '[-] no callback for request_id:', request_id
+
+            if msg_type == 'error':
+                if errorcallback:
+                    try:
+                        errorcallback(sock, *args, **kwargs)
+                    except Exception, ex:
+                        print '[-] failed to callback', ex
+                    except:
+                        print '[-] failed to callback'
+                else:
+                    print '[-] no errorcallback for request_id:', request_id
+                    # TODO: raise?
+                    raise 'uncaught remote error'
 
     def register_handler(self, key, handler):
         """register_handler:

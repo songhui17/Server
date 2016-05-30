@@ -14,6 +14,10 @@ E_ACTOR_EXIST = 4           # actor already bound to account
 E_ACTOR_NOT_CREATED = 5     # actor_id == -1, no actor bound to account
 
 
+class NotLoginedError(Exception):
+    def __init__(self):
+        pass
+
 def validate_username(username_):
     """
     valid username_: [a-zA-Z](1,10)
@@ -89,7 +93,7 @@ def create_account(userdb_, username_, password_):
     >>> create_account(userdb, 'abc', 'abc')
     >>> account = userdb['abc']
     >>> print account
-    {'name': 'abc', 'password': 'abc', 'level': 0, 'gold': 0, 'experience': 0}
+    {'name': 'abc', 'password': 'abc', 'actor_id': -1}
     """
     validate_username(username_)
     validate_password(password_)
@@ -105,9 +109,7 @@ def create_account(userdb_, username_, password_):
         new_user = {
             'name': username_,
             'password': password_,
-            'level': 0,
-            'gold': 0,
-            'experience': 0
+            'actor_id': -1
         }
         userdb_[username_] = new_user
         return True
@@ -172,26 +174,28 @@ class Account:
         info += 'name: {0}\n'.format(self.name)
         return info
 
-    def load(self, dict_):
-        """load(dict_) init from dict_
-        """
-        name = dict_.get('name', None)
-        if not name:
-            raise ValueError('There is no entry name in dict_')
+    def load(self, data):
+        """load(data) init from data
+        Exception:
 
-        password = dict_.get('password', None)
-        if not password:
-            raise ValueError('There is no entry password in dict_')
+        KeyError
+        """
+        name = data['name']
+        password = data['password']
+        actor_id = data['actor_id']
 
         self.name = name
         self.password = password
+        self.actor_id = actor_id
 
-    def dump(self):
+    def dump(self, ignore_password=False):
         """dump -> dict
         """
         ret = {}
         ret['name'] = self.name
-        ret['password'] = self.password
+        if not ignore_password:
+            ret['password'] = self.password
+        ret['actor_id'] = self.actor_id
         return ret
 
     def login(self, password_):
@@ -273,7 +277,7 @@ class ActorLevelInfo:
             tmp.star2 = data.get('star2')
             tmp.star3 = data.get('star3')
 
-            self.copy(tmp)
+            self._copy(tmp)
         except KeyError, ex:
             print '[-]', ex
             raise ex
@@ -294,6 +298,8 @@ class ActorLevelInfo:
 class Actor:
     """Actor:
     Fields
+
+    account     :Account (back ref)
 
     actor_id    :int
     name        :int
@@ -316,19 +322,20 @@ class Actor:
         return info
 
     def _copy(self, copy):
-        self.actor_id = tmp.actor_id
-        self.name = tmp.name
-        self.level = tmp.level
-        self.gold = tmp.gold
-        self.experience = tmp.experience
+        self.actor_id = copy.actor_id
+        self.name = copy.name
+        self.level = copy.level
+        self.gold = copy.gold
+        self.experience = copy.experience
 
-    def load(self, dict_):
+    def load(self, data):
         try:
-            tmp.actor_id = dict_.get('actor_id')
-            tmp.name = dict_.get('name')
-            tmp.level = dict_.get('level')
-            tmp.gold = dict_.get('gold')
-            tmp.experience = dict_.get('experience')
+            tmp = Actor()
+            tmp.actor_id = data.get('actor_id')
+            tmp.name = data.get('name')
+            tmp.level = data.get('level')
+            tmp.gold = data.get('gold')
+            tmp.experience = data.get('experience')
 
             self._copy(tmp)
         except KeyError, ex:
@@ -373,16 +380,17 @@ class Server:
         validate_username(username)
         validate_password(password)
 
-        user = accountdb_.get(username, None)
-        if not user:
+        account_data = accountdb_.get(username, None)
+        if not account_data:
             print '[-] no username: %s' % username
             return False, E_NO_USERNAME
 
         account = accountmap_.get(username, None)
         if not account:
-            print '[+] Create Account for ', username
+            print '[+] Create account for ', username
+            # import pdb; pdb.set_trace()
             account = Account()
-            account.load(user)
+            account.load(account_data)
             account.userdb = accountdb_
 
             accountmap_[username] = account
@@ -392,11 +400,12 @@ class Server:
             return False, E_INVALID_PASSWORD
 
         print 'account logined:'
-        print str(account)
+        print account.dump(ignore_password=True)
 
         if account.actor_id != -1:
+            # TODO: create actor instance
             actor_data = actordb_.get(account.actor_id, None)
-            if not actor:
+            if not actor_data:
                 info = 'Fatal error: actor_id: {0} doesnt exist in'\
                     ' database'.format(account.actor_id)
                 raise Exception(info)
@@ -409,8 +418,8 @@ class Server:
         pass
 
     def handle_get_actor_info(self, username):
-        """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
-        or None on error
+        """handle_get_actor_info -> dict { name, level, gold, experience }
+        | E_NO or None on error
 
         Error number:
 
@@ -459,18 +468,30 @@ class Server:
             print '[-]', ex
             raise ex
 
-
-    def handle_get_account_info(self, username):
-        """handle_get_account_info -> E_NO | dict {name, actor_id}
-        or None on error
-
-        Error Number:
-
-        E_OK
-        E_USER_NOT_LOGINED
+    def handle_get_actor_info2(self, actorid):
+        """handle_get_actor_info2 -> actor.dump()
 
         Exception:
 
+        KeyError    :Not actor instance created
+        """
+        try:
+            actor = self.actormap[actorid]
+            assert(actor.account is not None, 'account must be assgined')
+            if not actor.account.logined:
+                raise NotLoginedError()
+            return actor.dump()
+        except KeyError, ex:
+            # (1) actor created?
+            # (2) actordb in db?
+            raise NotImplemented('handle actor instance not created')
+
+    def handle_get_account_info(self, username):
+        """handle_get_account_info -> account.dump()
+
+        Exception:
+
+        NotLoginedError
         InvalidUsername
 
         """
@@ -481,10 +502,9 @@ class Server:
         account = accountmap.get(username, None)
         if not account:
             print '[-] user: {0} is not logined'.format(username)
-            return None, E_USER_NOT_LOGINED
+            raise NotLoginedError()
 
-        return {'name': account.name, 'actor_id': account.actor_id}, E_OK
-
+        return account.dump(ignore_password=True)
 
     def handle_create_actor(self, username, actorname):
         """handle_create_actor -> T|F, E_NO
@@ -532,9 +552,9 @@ class Server:
         actordb[actor.actor_id] = actor.dump()
         actormap[actor.actor_id] = actor
         account.actor_id = actor.actor_id
+        actor.account = account
         print actor
         return True, E_OK
-
 
     def handle_get_actor_level_info(self, username):
         """handle_get_actor_info -> dict{} or None on error, errno
@@ -583,7 +603,6 @@ class Server:
         # TODO: handle empty
         return level_data
 
-
     def load_leveldb(self, leveldb):
         """load_leveldb: init level database
         """
@@ -622,7 +641,6 @@ class Server:
             'task3': 'task desc 3',
             'bonuses': ['a', 'b']
         }
-
 
     def main(self, args):
         """main flow ([+] are requests)
@@ -671,6 +689,9 @@ class Server:
         sockutil = SockUtil()
         sockutil.register_handler('login', self.handle_login)
         sockutil.register_handler('logout', self.handle_logout)
+        sockutil.register_handler('get_account_info', self.handle_get_account_info)
+        sockutil.register_handler('create_actor', self.handle_create_actor)
+        sockutil.register_handler('get_actor_info', self.handle_get_actor_info)
 
         print '[+] init done'
         print ''
@@ -740,20 +761,15 @@ class Server:
                                 username, password = tokens[1], tokens[2]
                                 self.handle_login(username, password)
                             except Exception, ex:
-                                print ex
+                                print '[-] failed to login:', ex
                         else:
                             print '[-] syntax error: login username password'
                     elif tokens[0] == 'get_account_info':
                         if len(tokens) == 2:
                             try:
                                 username = tokens[1]
-                                account_info, errno = self.handle_get_account_info(username)
-                                if account_info:
-                                    print account_info
-                                else:
-                                    # print '[-] user is not logined'.\
-                                    #     format(username)
-                                    pass
+                                account_info = self.handle_get_account_info(username)
+                                print account_info
                             except Exception, ex:
                                 print ex
                         else:
