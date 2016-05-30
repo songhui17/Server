@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__all__ = ['short2str', 'str2short', 'send_message', 'SockUtil']
+__all__ = ['short2str', 'str2short', 'SockUtil']
 
 
 def short2str(value):
@@ -19,29 +19,6 @@ def str2short(value):
     high_byte = ord(value[0])
     low_byte = ord(value[1])
     return (high_byte << 8) + low_byte
-
-
-def send_message(sock, data, callback, request_id, callback_map):
-    """ payload = {'type':'type_name', ...}
-    Exception:
-    
-    sendall
-
-    """
-    data['__request_id__'] = request_id
-
-    payload = repr(data)
-    message = '%s%s' % (short2str(len(payload)), payload)
-    print '[+] send_message:', message
-
-    if callback and (callback_map is not None):
-        print '[+] add callback request_id:', request_id
-        callback_map[request_id] = callback
-
-    sock.sendall(message)
-
-    request_id += 1
-    return request_id
 
 
 class SockUtil:
@@ -66,7 +43,7 @@ class SockUtil:
         print '[+] send_message:', message
         sock.sendall(message)
 
-    def send_request(self, sock, method, **kwargs):
+    def send_request(self, sock, method, *args, **kwargs):
         """send_request(sock, method, callback=method, ...)
         Params:
         method      :??
@@ -80,7 +57,7 @@ class SockUtil:
         callback = kwargs.pop('callback', None)
         if callback:
             print '[+] add callback request_id:', self.request_id
-            self.callback_map[request_id] = callback
+            self.callback_map[self.request_id] = callback
 
         if not method:
             raise ValueError('method is None')
@@ -89,12 +66,13 @@ class SockUtil:
             'type': 'request',
             'request_id': self.request_id,
             'handler': method,
-            'data': kwargs,
+            'args': args,
+            'kwargs': kwargs,
         }
         self._send_message(sock, wrapped)
         self.request_id += 1
 
-    def send_response(self, sock, request_id, **kwargs):
+    def send_response(self, sock, request_id, *args, **kwargs):
         """send_request(...): 
 
         Exception:
@@ -105,11 +83,12 @@ class SockUtil:
             'type': 'response',
             'request_id': request_id,
             'status': 'ok',
-            'data': kwargs,
+            'args': args,
+            'kwargs': kwargs,
         }
         self._send_message(sock, wrapped)
 
-    def send_error(self, sock, request_id, **kwargs):
+    def send_error(self, sock, request_id, *args, **kwargs):
         """send_error
 
         Exception:
@@ -120,27 +99,45 @@ class SockUtil:
             'type': 'response',
             'request_id': request_id,
             'status': 'error',
-            'data': kwargs,
+            'args': args,
+            'kwargs': kwargs,
         }
         self._send_message(sock, wrapped)
 
     def recv_message(self, sock, payload):
-        message = eval(payload)
+        """recv_message
+        Exception:
+
+        sock.sendall
+        """
+        try:
+            message = eval(payload)
+        except SyntaxError:
+            print '[-] failed to parse response: syntax error'
+            raise
+
         print '[+] recv', message
         msg_type = message.get('type', None)
-        if not msg_type:
+        if msg_type is None:
             print '[-] implementation error: message type is not specified'
             return
 
-        data = message.get('data', {})
+        args = message.get('args', ())
+        kwargs = message.get('kwargs', {})
         if msg_type == 'request':
-            handler_name = data.get('handler', None)
+            handler_name = message.get('handler', None)
             general_handler = self.handler_map.get(handler_name, None)
             if general_handler:
+                request_id = message.get('request_id', None)
                 try:
-                    general_handler(**data)
-                except:
-                    pass
+                    ret = general_handler(*args, **kwargs)
+                    if request_id is not None:
+                        print '[+] send response:', ret
+                        self.send_response(sock, request_id, ret)
+                except Exception, ex:
+                    # TODO: serialize exception/error
+                    print '[-] send error:', str(ex)
+                    self.send_error(sock, request_id, str(ex))
             else:
                 print '[-] no handler for', handler_name[0, 10]
 
@@ -148,14 +145,14 @@ class SockUtil:
         elif msg_type in ['response', 'error']:
             request_id = message.get('request_id', None)
 
-            if not request_id:
+            if request_id is None:
                 print '[-] implementation error: request_id is not specified'
                 return
 
             callback = self.callback_map.pop(request_id, None)
             if callback:
                 try:
-                    callback(sock, **data)
+                    callback(sock, *args, **kwargs)
                 except:
                     pass
             else:

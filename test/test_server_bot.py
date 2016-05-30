@@ -42,6 +42,7 @@ def main():
                     sock.close()
                     break
 
+                # import pdb; pdb.set_trace()
                 buf += recved
                 buf = buf[index:]
                 index = 0

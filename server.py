@@ -345,13 +345,12 @@ class Actor:
         return ret
 
 
-
 class Server:
     def __init__(self):
         pass
 
-    def handle_login(self, username_, password_):
-        """login -> account or None when no username_, errno, create actor instance in
+    def handle_login(self, username, password):
+        """login -> T|F, errno, create actor instance in
         actormap_ if there is actor bound to this account
 
         ErrorNo:
@@ -371,26 +370,26 @@ class Server:
         actordb_ = self.actordb
         actormap_ = self.actormap
 
-        validate_username(username_)
-        validate_password(password_)
+        validate_username(username)
+        validate_password(password)
 
-        user = accountdb_.get(username_, None)
+        user = accountdb_.get(username, None)
         if not user:
-            print '[-] no username_: %s' % username_
-            return None, E_NO_USERNAME
+            print '[-] no username: %s' % username
+            return False, E_NO_USERNAME
 
-        account = accountmap_.get(username_, None)
+        account = accountmap_.get(username, None)
         if not account:
-            print '[+] Create Account for ', username_
+            print '[+] Create Account for ', username
             account = Account()
             account.load(user)
             account.userdb = accountdb_
 
-            accountmap_[username_] = account
+            accountmap_[username] = account
 
-        if not account.login(password_):
+        if not account.login(password):
             print '[-] invalid password'
-            return None, E_INVALID_PASSWORD
+            return False, E_INVALID_PASSWORD
 
         print 'account logined:'
         print str(account)
@@ -404,8 +403,10 @@ class Server:
             actor = Actor()
             actor.load(actor_data)
             actormap_[actor.actor_id] = actor
-        return account, E_OK
+        return True, E_OK
 
+    def handle_logout(self, username):
+        pass
 
     def handle_get_actor_info(self, username):
         """handle_get_actor_info -> E_NO | dict { name, level, gold, experience }
@@ -623,45 +624,6 @@ class Server:
         }
 
 
-    def handle_login_request(self, username=None, password=None):
-        print '[-] recv login'
-        if username is not None or password is not None:
-            try:
-                ret, errno = handle_login(
-                    userdb, accountmap, username,
-                    password, actordb, actormap)
-                if errno == E_OK:
-                    send_message(
-                        client_sock, {
-                            'type': 'response',
-                            'statue': 'ok'}, None,
-                        request_id, None)
-                else:
-                    send_message(
-                        client_sock,
-                        {'type': 'response',
-                         'status': 'error',
-                         'message': 'Invalid username or'
-                             ' password'},
-                        None, request_id, None)
-            except Exception, ex:
-                send_message(
-                    client_sock,
-                    {'type': 'response',
-                     'status': 'error',
-                     'message': str(ex)},
-                    None, request_id, None)
-        else:
-            info = '[-] syntax error: login username password'
-            print info
-            send_message(
-                client_sock,
-                {'type': 'response',
-                 'status': 'error',
-                 'message': info},
-                None, request_id, None)
-
-
     def main(self, args):
         """main flow ([+] are requests)
 
@@ -707,7 +669,8 @@ class Server:
         buf = ''
         index = 0
         sockutil = SockUtil()
-        sockutil.register_handler('login', self.handle_login_request)
+        sockutil.register_handler('login', self.handle_login)
+        sockutil.register_handler('logout', self.handle_logout)
 
         print '[+] init done'
         print ''
@@ -755,7 +718,7 @@ class Server:
                             else:
                                 payload = buf[index:index+msg_length]
                                 index += msg_length
-                                socket.recv_message(client_sock, payload)
+                                sockutil.recv_message(client_sock, payload)
 
                     if listen_sock in read_socks:
                         if client_sock:
