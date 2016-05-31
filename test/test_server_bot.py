@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os, sys; sys.path.append(os.getcwd())
 
 import server
@@ -23,14 +25,15 @@ class Handler:
             sock, method=method, callback=callback, onerror=onerror,
             *args, **kwargs)
 
-    def on_login(self, sock, ret):
-        _, errno = ret
+    def on_login(self, sock, **response):
+        # _, errno = response
+        errno = response.get('errno')
         if errno == server.E_OK:
             print '[+] on_login ok'
 
             self.sockutil.send_request(
                 sock, method='get_account_info',
-                username='abc', callback=self.on_get_account_info,
+                username=u'主宰', callback=self.on_get_account_info,
                 onerror=self.on_get_account_info_error)
         else:
             print '[-] on_login failed, errno:', errno
@@ -40,28 +43,28 @@ class Handler:
         print '[-] on_login_error:', error
         self.state = STATE_DONE
 
-    def on_get_account_info(self, sock, data):
-        print '[+] on_get_account_info:', data
-        actor_id = data.get('actor_id', None)
-        if actor_id:
+    def on_get_account_info(self, sock, **response):
+        print '[+] on_get_account_info:', response
+        actor_id = response.get('actor_id', None)
+        if actor_id is None:
             print '[-] fatal error'
             # raise
             self.state = STATE_DONE
 
         if actor_id == -1:
-            self._remote(sock, 'create_actor', username='abc', actorname='sniper')
+            self._remote(sock, 'create_actor', username=u'主宰', actorname='sniper')
         else:
-            self._remote(sock, 'get_actor_info', username='abc')
+            self._remote(sock, 'get_actor_info', username=u'主宰')
 
     def on_get_account_info_error(self, sock, error):
         print '[-] on_get_account_info:', error
         self.state = STATE_DONE
 
-    def on_create_actor(self, sock, ret):
-        _, errno = ret
+    def on_create_actor(self, sock, **response):
+        errno = response.get('errno')
         if errno == server.E_OK:
             print '[+] on_create_actor ok'
-            self._remote(sock, 'get_actor_info', username='abc')
+            self._remote(sock, 'get_actor_info', username=u'主宰')
         else:
             print '[-] on_create_actor failed, errno:', errno
             self.state = STATE_DONE
@@ -70,8 +73,9 @@ class Handler:
         print '[-] on_create_actor_error:', error
         self.state = STATE_DONE
 
-    def on_get_actor_info(self, sock, ret):
-        data, errno = ret
+    def on_get_actor_info(self, sock, **response):
+        errno = response.get('errno')
+        data = response.get('actor_info')
         if errno == server.E_OK:
             print '[+] on_get_actor_info ok'
             print data
@@ -99,7 +103,7 @@ def main():
     sockutil = SockUtil()
     handler.sockutil = sockutil
 
-    sockutil.send_request(sock, method='login', username='abc',
+    sockutil.send_request(sock, method='login', username=u'主宰',
                           password='abc', callback=handler.on_login,
                           onerror=handler.on_login_error)
 
@@ -122,7 +126,7 @@ def main():
                 if len(buf) >= 2:
                     prev_index = index
 
-                    msg_length = str2short(buf[index:index+3])
+                    msg_length = strtob128(buf[index:index+3])
                     index+=2
                     if msg_length > 1024:
                         # TODO: handle and close socket

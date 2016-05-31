@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import time
 import select
 import argparse
 from socket import *
+
+import message
 from sockutil import *
 
 
@@ -40,6 +44,8 @@ def validate_username(username_):
     Exception: username_(len=11) is too short or long
 
     """
+    return True
+
     if username_ is None:
         raise Exception('username_ is None')
 
@@ -383,7 +389,7 @@ class Server:
         account_data = accountdb_.get(username, None)
         if not account_data:
             print '[-] no username: %s' % username
-            return False, E_NO_USERNAME
+            return message.LoginRequestResponse(False, E_NO_USERNAME)
 
         account = accountmap_.get(username, None)
         if not account:
@@ -397,7 +403,7 @@ class Server:
 
         if not account.login(password):
             print '[-] invalid password'
-            return False, E_INVALID_PASSWORD
+            return message.LoginRequestResponse(False, E_INVALID_PASSWORD)
 
         print 'account logined:'
         print account.dump(ignore_password=True)
@@ -412,7 +418,7 @@ class Server:
             actor = Actor()
             actor.load(actor_data)
             actormap_[actor.actor_id] = actor
-        return True, E_OK
+        return message.LoginRequestResponse(True, E_OK)
 
     def handle_logout(self, username):
         pass
@@ -443,12 +449,14 @@ class Server:
             account = accountmap.get(username, None)
             if not account:
                 print '[-] user: {0} is not logined'.format(username)
-                return None, E_USER_NOT_LOGINED
+                return message.GetActorInfoRequestResponse(
+                    None, E_USER_NOT_LOGINED)
 
             actor_id = account.actor_id
             if actor_id == -1:
                 print '[-] no actor for this account', account.name
-                return None, E_ACTOR_NOT_CREATED
+                return message.GetActorInfoRequestResponse(
+                    None, E_ACTOR_NOT_CREATED)
 
             actor = actormap.get(actor_id, None)
             if not actor:
@@ -462,7 +470,7 @@ class Server:
                 actor = Actor()
                 actor.load(actor_data)
                 actormap[actor_id, actor]
-            return actor.dump(), E_OK
+            return message.GetActorInfoRequestResponse(actor, E_OK)
 
         except Exception, ex:
             print '[-]', ex
@@ -531,10 +539,10 @@ class Server:
         account = accountmap.get(username, None)
         if not account:
             print '[-] user: {0} is not logined'.format(username)
-            return False, E_USER_NOT_LOGINED
+            return message.CreateActorRequestResponse(False, E_USER_NOT_LOGINED)
 
         if account.actor_id != -1:
-            return False, E_ACTOR_EXIST
+            return message.CreateActorRequestResponse(False, E_ACTOR_EXIST)
 
         actor = Actor()
         actor.actor_id = 0
@@ -554,10 +562,10 @@ class Server:
         account.actor_id = actor.actor_id
         actor.account = account
         print actor
-        return True, E_OK
+        return message.CreateActorRequestResponse(True, E_OK)
 
     def handle_get_actor_level_info(self, username):
-        """handle_get_actor_info -> dict{} or None on error, errno
+        """handle_get_actor_level_info -> dict{} or None on error, errno
 
         Error Number:
 
@@ -664,6 +672,7 @@ class Server:
         print '[+] init account database'
         self.accountdb = {}
         create_account(self.accountdb, 'abc', 'abc')
+        create_account(self.accountdb, u'主宰', 'abc')
         self.accountmap = {}
 
         print '[+] init actor database'
@@ -716,9 +725,9 @@ class Server:
                         except Exception, ex:
                             print ex
 
-                        print '[+] recv', buf
+                        print '[+] recved', recved
                         if len(recved) == 0:
-                            print '[+] close socket', recved
+                            print '[+] close socket'
                             client_sock.close()
                             client_sock = None
                         
@@ -728,13 +737,14 @@ class Server:
                         if len(buf) >= 2:
                             prev_index = index
 
-                            msg_length = str2short(buf[index:index+3])
+                            msg_length = strtob128(buf[index:index+3])
                             index+=2
                             if msg_length > 1024:
                                 # TODO: handle and close socket
                                 raise Exception('fatal error')
                             if msg_length < len(buf) - index:
                                 # not ready
+                                # print '[-] not ready msg_length:', msg_length
                                 index = prev_index
                             else:
                                 payload = buf[index:index+msg_length]
@@ -750,8 +760,8 @@ class Server:
 
                         client_sock, client_addr = listen_sock.accept()
                         print '[+] recv client:', client_addr
-                    print '.',
-                    time.sleep(1)
+                    # print '.',
+                    time.sleep(0.05)
 
                 if command:
                     tokens = command.split(' ')
