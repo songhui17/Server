@@ -29,7 +29,9 @@ def dump(value):
             ret[key] = dump(v2)
         return ret
     elif isinstance(value, (tuple, list)):
-        raise Exception('tuple and list is not supported')
+        # raise Exception('tuple and list is not supported')
+        print '[X] tuple and list must contains single type'
+        return value
     else:
         value_dump = getattr(value, 'dump')
         return value_dump()
@@ -228,8 +230,11 @@ class SockUtil:
 
             handler_name = message.get('handler', None)
             general_handler = self.handler_map.get(handler_name, None)
+            if general_handler == 'get_actor_level_info_request':
+                import pdb; pdb.set_trace()
+
+            request_id = message.get('request_id', None)
             if general_handler:
-                request_id = message.get('request_id', None)
                 try:
                     ret = general_handler(*args, **kwargs)
                     if request_id is not None:
@@ -240,7 +245,9 @@ class SockUtil:
                     print '[-] send error:', str(ex)
                     self.send_error(sock, request_id, handler_name, error=str(ex))
             else:
-                print '[-] no handler for', handler_name[0, 10]
+                info = '[-] no handler for %s' % handler_name[0:10]
+                print info
+                self.send_error(sock, request_id, handler_name, error=info)
 
             # TODO: to instance
         elif msg_type in ['response', 'error']:

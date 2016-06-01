@@ -23,89 +23,206 @@ from os import path
 #     ]
 # }
 
-login_request = {
-    'name': 'login_request',
-    # 'base': 'base_request',
-    'fields': [
-        {
-            'name': 'username',
-            'type': 'string'
-        },
-        {
-            'name': 'password',
-            'type': 'string'
-        },
-    ]
-}
+type_map = {
+    'login_request': {
+        'name': 'login_request',
+        # 'base': 'base_request',
+        'fields': [
+            {
+                'name': 'username',
+                'type': 'string'
+            },
+            {
+                'name': 'password',
+                'type': 'string'
+            },
+        ]
+    },
 
-login_request_response = {
-    'name': 'login_request_response',
-    'fields': [
-        {
-            'name': 'result',
-            'type': 'bool'
-        },
-        {
-            'name': 'errno',
-            'type': 'int'
-        }
-    ]
-}
+    'login_request_response': {
+        'name': 'login_request_response',
+        'fields': [
+            {
+                'name': 'result',
+                'type': 'bool'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
 
-create_actor_request_response = {
-    'name': 'create_actor_request_response',
-    'fields': [
-        {
-            'name': 'result',
-            'type': 'bool'
-        },
-        {
-            'name': 'errno',
-            'type': 'int'
-        }
-    ]
-}
+    'get_account_info_request': {
+        'name': 'get_account_info_request',
+        'fields': [
+            {
+                'name': 'username',
+                'type': 'string',
+            }
+        ]
+    },
 
-actor = {
-    'name': 'actor',
-    'fields': [
-        {
-            'name': 'actor_id',
-            'type': 'int'
-        },
-        {
-            'name': 'name',
-            'type': 'string'
-        },
-        {
-            'name': 'level',
-            'type': 'int'
-        },
-        {
-            'name': 'gold',
-            'type': 'int'
-        },
-        {
-            'name': 'experience',
-            'type': 'int'
-        },
-    ]
-}
+    'account': {
+        'name': 'account',
+        'fields': [
+            {
+                'name': 'name',
+                'type': 'string',
+            },
+            {
+                'name': 'actor_id',
+                'type': 'int',
+            }
+        ]
+    },
 
-get_actor_info_request_response = {
-    'name': 'get_actor_info_request_response',
-    'fields': [
-        {
-            'name': 'actor_info',
-            'type': 'actor',
-        },
-        {
-            'name': 'errno',
-            'type': 'int'
-        }
-    ]
-}
+    'get_account_info_request_response': {
+        'name': 'get_account_info_request_response',
+        'fields': [
+            {
+                'name': 'account_info',
+                'type': 'account'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
 
+    'create_actor_request': {
+            'name': 'create_actor_request',
+            'fields': [
+                {
+                    'name': 'username',
+                    'type': 'string'
+                },
+                {
+                    'name': 'actor_type',
+                    'type': 'string',
+                }
+        ]
+    },
+
+    'create_actor_request_response': {
+        'name': 'create_actor_request_response',
+        'fields': [
+            {
+                'name': 'result',
+                'type': 'bool'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+
+    'actor': {
+        'name': 'actor',
+        'fields': [
+            {
+                'name': 'actor_id',
+                'type': 'int'
+            },
+            {
+                'name': 'name',
+                'type': 'string'
+            },
+            {
+                'name': 'level',
+                'type': 'int'
+            },
+            {
+                'name': 'gold',
+                'type': 'int'
+            },
+            {
+                'name': 'experience',
+                'type': 'int'
+            },
+        ]
+    },
+
+    'get_actor_info_request': {
+        'name': 'get_actor_info_request',
+        'fields': [
+            {
+                'name': 'username',
+                'type': 'string'
+            }
+        ]
+    },
+
+    'get_actor_info_request_response': {
+        'name': 'get_actor_info_request_response',
+        'fields': [
+            {
+                'name': 'actor_info',
+                'type': 'actor',
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+
+    'get_actor_level_info_request': {
+        'name': 'get_actor_level_info_request',
+        'fields': [
+            {
+                'name': 'username',
+                'type': 'string'
+            },
+        ]
+    },
+
+    'actor_level_info': {
+        'name': 'actor_level_info',
+        'fields': [
+             {
+                'name': 'actor_id',
+                'type': 'int'
+             },
+             {
+                 'name': 'level_id',
+                 'type': 'int'
+             },
+             {
+                 'name': 'passed',
+                 'type': 'bool'
+             },
+             {
+                 'name': 'star1',
+                 'type': 'bool'
+             },
+             {
+                 'name': 'star2',
+                 'type': 'bool'
+             },
+             {
+                 'name': 'star3',
+                 'type': 'bool'
+             },
+        ]
+    },
+
+    'get_actor_level_info_request_response': {
+        'name': 'get_actor_level_info_request_response',
+        'fields': [
+            {
+                'name': 'actor_level_info',
+                'type': 'list actor_level_info'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    }
+}
 
 def to_csharp_name(name):
     tokens = name.split('_')
@@ -114,38 +231,93 @@ def to_csharp_name(name):
     return csharp_name
 
 
+def is_primitive(type_name):
+    return type_name in ['int', 'float', 'string', 'bool']
+
+
 def to_csharp_type(type_name):
     if type_name in ['int', 'float', 'string', 'bool']:
         return type_name
     else:
-        return to_csharp_name(type_name)
+        if type_name.startswith('list '):
+            
+            return 'List<%s>' % to_csharp_name(type_name[4:].strip())
+        else:
+            return to_csharp_name(type_name)
 
 
-def create_csharp_class(type_def, dirname):
+def create_csharp_class(type_def, dirname, responses=[], des_template=''):
+    # import pdb; pdb.set_trace()
+
     name = type_def.get('name')
     class_name = to_csharp_name(name)
 
+    class_template = '''using System;
+using System.Collections.Generic;
+
+namespace Shooter
+{
+    [Serializable]
+    public class %s {
+%s
+        public override string ToString() {
+            var info = "";
+%s
+            return info;
+        }
+    }
+%s
+'''
+    field_template = '''        public %s %s; '''
+    
+    to_string_template = r'''            info += "<b>%s</b>:" + %s + "\n";'''
+    to_string_template_2 = r'''            info += "<b>%s</b>:\n" + %s + "\n";'''
+
     lines = []
     base_class = type_def.get('base', None)
-    lines.append('namespace Shooter {')
-    lines.append('[System.Serializable]')
-    lines.append('public class {0}'.format(class_name))
+    class_name_xxx = class_name
     if base_class:
-        lines[0] += ' : {0}'.format(to_csharp_name(base_class))
+        base_class = to_csharp_name(base_class)
+        class_name_xxx = '%s : %s' % (class_name_xxx, base_class)
 
-    lines.append('{')
     fields = type_def.get('fields')
+    fields_xxx = []
+    to_string_xxx = []
     for field in fields:
         field_name = field.get('name') # to_csharp_name(field.get('name'))
         field_type = to_csharp_type(field.get('type'))
-        lines.append('    public {0} {1};'.format(field_type, field_name))
-    lines.append('}')
-    lines.append('}')
-    text = '\n'.join(lines)
+        fields_xxx.append(field_template % (field_type, field_name))
+        if is_primitive(field_type):
+            to_string_xxx.append(to_string_template % (field_name, field_name))
+        else:
+            to_string_xxx.append(to_string_template_2 % (field_name, field_name))
+
+    wrap_template = '''
+    [Serializable]
+    public class _%s {
+        public string handler;
+        public string type;
+        public int request_id;
+        public %s response;
+    }
+}'''
+
+    # response wrapper
+    wrap_class = '}'
+    if name.endswith('response'):
+        wrap_class = wrap_template % (class_name, class_name)
+        des = des_template % (name, class_name, class_name)
+        responses.append(des)
+
+    text = class_template % (class_name_xxx,
+                             '\n'.join(fields_xxx),
+                             '\n'.join(to_string_xxx),
+                             wrap_class)
     fname = '%s\%s.cs' % (dirname, class_name)
-    print 'write to', fname
+    print 'write to', fname,
     with open(fname, 'w') as f:
         f.write(text)
+    print 'done'
 
 
 def create_python_class(type_def, lines=[]):
@@ -183,24 +355,46 @@ if path.isdir(dirname):
     shutil.rmtree(dirname)
 
 os.mkdir(dirname)
-# create_csharp_class(base_request, dirname)
-create_csharp_class(login_request, dirname)
-create_csharp_class(login_request_response, dirname)
-create_csharp_class(create_actor_request_response, dirname)
-create_csharp_class(actor, dirname)
-create_csharp_class(get_actor_info_request_response, dirname)
+
+deserializer_template = r'''using UnityEngine;
+
+namespace Shooter
+{
+    public class ResponseDeserializer {
+        public static object Deserialize(string handler_, string payload_, out int requestId_) {
+            %s
+            requestId_ = -1;
+            return null;
+        }
+    }
+}
+'''
+deserialize_case_tempalate = r'''
+            if (handler_ == "%s") {
+                var response = JsonUtility.FromJson<_%s>(payload_) as _%s;
+                requestId_ = response.request_id;
+                return response.response;
+            }
+'''
+responses = []
+for k, v in type_map.iteritems():
+    create_csharp_class(v, dirname, responses, deserialize_case_tempalate)
 print 'done'
+
+des_fname = '%s/ResponseDeserializer.cs' % dirname
+print 'write to', des_fname
+with open(des_fname, 'w') as f:
+    text = ''.join(responses)
+    f.write(deserializer_template % text)
 
 print 'generate python class for message(request/response)'
 lines = []
 lines.append('import server')
 lines.append('')
 lines.append('')
-create_python_class(login_request, lines)
-create_python_class(login_request_response, lines)
-create_python_class(create_actor_request_response, lines)
-create_python_class(actor, lines)
-create_python_class(get_actor_info_request_response, lines)
+for k, v in type_map.iteritems():
+    create_python_class(v, lines)
+
 with open('message.py', 'w') as f:
     text = '\n'.join(lines)
     f.write(text)

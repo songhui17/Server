@@ -194,7 +194,7 @@ class Account:
         self.password = password
         self.actor_id = actor_id
 
-    def dump(self, ignore_password=False):
+    def dump(self, ignore_password=True):
         """dump -> dict
         """
         ret = {}
@@ -259,6 +259,9 @@ class ActorLevelInfo:
     def __init__(self):
         pass
 
+    def __init__(self, data):
+        self.load(data)
+
     def _copy(self, copy):
         self.actor_id = copy.actor_id
         self.level_id = copy.level_id
@@ -275,6 +278,7 @@ class ActorLevelInfo:
         KeyError
         """
         try:
+            import pdb; pdb.set_trace()
             tmp = ActorLevelInfo()
             tmp.actor_id = data.get('actor_id')
             tmp.level_id = data.get('level_id')
@@ -471,12 +475,11 @@ class Server:
                 actor.load(actor_data)
                 actormap[actor_id, actor]
             return message.GetActorInfoRequestResponse(actor, E_OK)
-
         except Exception, ex:
             print '[-]', ex
             raise ex
 
-    def handle_get_actor_info2(self, actorid):
+    def handle_get_actor_info2(self, actor_id):
         """handle_get_actor_info2 -> actor.dump()
 
         Exception:
@@ -484,22 +487,27 @@ class Server:
         KeyError    :Not actor instance created
         """
         try:
-            actor = self.actormap[actorid]
+            actor = self.actormap[actor_id]
             assert(actor.account is not None, 'account must be assgined')
             if not actor.account.logined:
                 raise NotLoginedError()
-            return actor.dump()
+            return message.GetActorInfoRequestResponse(actor.dump(), E_OK)
         except KeyError, ex:
             # (1) actor created?
             # (2) actordb in db?
             raise NotImplemented('handle actor instance not created')
 
     def handle_get_account_info(self, username):
-        """handle_get_account_info -> account.dump()
+        """handle_get_account_info -> account.dump(), E_NO
+
+        Err Num:
+        
+        E_OK
+        E_USER_NOT_LOGINED
 
         Exception:
 
-        NotLoginedError
+        # TODO: NotLoginedError
         InvalidUsername
 
         """
@@ -510,11 +518,12 @@ class Server:
         account = accountmap.get(username, None)
         if not account:
             print '[-] user: {0} is not logined'.format(username)
-            raise NotLoginedError()
+            # raise NotLoginedError()
+            return message.GetAccountInfoRequestResponse(None, E_USER_NOT_LOGINED)
 
-        return account.dump(ignore_password=True)
+        return message.GetAccountInfoRequestResponse(account.dump(), E_OK)
 
-    def handle_create_actor(self, username, actorname):
+    def handle_create_actor(self, username, actor_type):
         """handle_create_actor -> T|F, E_NO
         :insert into actordb, create instance into actormap
 
@@ -546,14 +555,14 @@ class Server:
 
         actor = Actor()
         actor.actor_id = 0
-        actor.name = actorname
+        actor.name = actor_type
         actor.level = 1
         actor.gold = 100
         actor.experience = 0
 
         if actor.actor_id in actordb:
             info = 'actor_id: {0} conflict for {1}'.format(
-                actor.actor_id, actorname)
+                actor.actor_id, actor_type)
             print '[-]', info
             raise Exception(info)
 
@@ -587,12 +596,12 @@ class Server:
         account = accountmap.get(username, None)
         if not account:
             print '[-] user: {0} is not logined'.format(username)
-            return None, E_USER_NOT_LOGINED
+            return message.GetActorLevelInfoRequestResponse(None, E_USER_NOT_LOGINED)
 
         actor_id = account.actor_id
         if actor_id == -1:
             print '[-] no actor for this account', account.name
-            return None, E_ACTOR_NOT_CREATED
+            return message.GetActorLevelInfoRequestResponse(None, E_ACTOR_NOT_CREATED)
 
         actor = actormap.get(actor_id, None)
         if not actor:
@@ -607,9 +616,11 @@ class Server:
             actor.load(actor_data)
             actormap[actor_id, actor]
 
-        level_data = [v for k, v in actorleveldb if k[0] == actor_id]
+        level_data = [v for k, v in actorleveldb.iteritems() if k[0] == actor_id]
+        print level_data
         # TODO: handle empty
-        return level_data
+        return message.GetActorLevelInfoRequestResponse(level_data, E_OK)
+                # {i: j for i, j in enumerate(level_data)}, E_OK)
 
     def load_leveldb(self, leveldb):
         """load_leveldb: init level database
@@ -650,6 +661,43 @@ class Server:
             'bonuses': ['a', 'b']
         }
 
+    def load_actorleveldb(self, actorleveldb):
+        actorleveldb[(0, 0)] = {
+            "actor_id": 0,
+            "level_id": 0,
+            "passed": True,
+            "star1": True,
+            "star2": True,
+            "star3": True
+        }
+
+        actorleveldb[(0, 1)] = {
+            "actor_id": 0,
+            "level_id": 1,
+            "passed": True,
+            "star1": False,
+            "star2": True,
+            "star3": False,
+        }
+
+        actorleveldb[(0, 2)] = {
+            "actor_id": 0,
+            "level_id": 2,
+            "passed": False,
+            "star1": False,
+            "star2": False,
+            "star3": False,
+        }
+
+        actorleveldb[(1, 0)] = {
+            "actor_id": 1,
+            "level_id": 0,
+            "passed": False,
+            "star1": False,
+            "star2": False,
+            "star3": False,
+        }
+
     def main(self, args):
         """main flow ([+] are requests)
 
@@ -684,6 +732,7 @@ class Server:
         self.load_leveldb(self.leveldb)
 
         self.actorleveldb = {}
+        self.load_actorleveldb(self.actorleveldb)
 
         print '[+] init listening socket'
         listen_sock = socket(AF_INET, SOCK_STREAM)
@@ -701,6 +750,7 @@ class Server:
         sockutil.register_handler('get_account_info', self.handle_get_account_info)
         sockutil.register_handler('create_actor', self.handle_create_actor)
         sockutil.register_handler('get_actor_info', self.handle_get_actor_info)
+        sockutil.register_handler('get_actor_level_info', self.handle_get_actor_level_info)
 
         print '[+] init done'
         print ''
@@ -732,31 +782,39 @@ class Server:
                             client_sock = None
                         
                         buf += recved
-                        buf = buf[index:]
-                        index = 0
-                        if len(buf) >= 2:
-                            prev_index = index
+                        while True:
+                            buf = buf[index:]
+                            index = 0
+                            if len(buf) >= 2:
+                                prev_index = index
 
-                            msg_length = strtob128(buf[index:index+3])
-                            index+=2
-                            if msg_length > 1024:
-                                # TODO: handle and close socket
-                                raise Exception('fatal error')
-                            if msg_length < len(buf) - index:
-                                # not ready
-                                # print '[-] not ready msg_length:', msg_length
-                                index = prev_index
+                                msg_length = strtob128(buf[index:index+2])
+                                index+=2
+                                if msg_length > 1024:
+                                    # TODO: handle and close socket
+                                    raise Exception('fatal error')
+                                if msg_length > len(buf) - index:
+                                    # not ready
+                                    import pdb; pdb.set_trace()
+                                    print '[-] not ready msg_length:', msg_length
+                                    index = prev_index
+                                    break
+                                else:
+                                    payload = buf[index:index+msg_length]
+                                    index += msg_length
+                                    sockutil.recv_message(client_sock, payload)
                             else:
-                                payload = buf[index:index+msg_length]
-                                index += msg_length
-                                sockutil.recv_message(client_sock, payload)
+                                break
 
                     if listen_sock in read_socks:
                         if client_sock:
                             # TODO: multi clients
                             print '[-] multi client is not implemented',\
                                 'close the prev client'
+                            import pdb; pdb.set_trace()
                             client_sock.close()
+                            index = 0
+                            buf = ''
 
                         client_sock, client_addr = listen_sock.accept()
                         print '[+] recv client:', client_addr
@@ -802,8 +860,9 @@ class Server:
                         if len(tokens) == 3:
                             try:
                                 username = tokens[1]
-                                actorname = tokens[2]
-                                ret, errno = self.handle_create_actor(username, actorname)
+                                actor_type = tokens[2]
+                                ret, errno = self.handle_create_actor(
+                                    username, actor_type)
                                 if not ret:
                                     print '[-] failed to create actor',\
                                         'errno:', errno

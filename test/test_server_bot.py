@@ -45,14 +45,16 @@ class Handler:
 
     def on_get_account_info(self, sock, **response):
         print '[+] on_get_account_info:', response
-        actor_id = response.get('actor_id', None)
+        account_info = response.get('account_info', None)
+        actor_id = account_info.get('actor_id', None)
         if actor_id is None:
             print '[-] fatal error'
             # raise
             self.state = STATE_DONE
 
+        print ''
         if actor_id == -1:
-            self._remote(sock, 'create_actor', username=u'主宰', actorname='sniper')
+            self._remote(sock, 'create_actor', username=u'主宰', actor_type='sniper')
         else:
             self._remote(sock, 'get_actor_info', username=u'主宰')
 
@@ -64,6 +66,7 @@ class Handler:
         errno = response.get('errno')
         if errno == server.E_OK:
             print '[+] on_create_actor ok'
+            print ''
             self._remote(sock, 'get_actor_info', username=u'主宰')
         else:
             print '[-] on_create_actor failed, errno:', errno
@@ -79,12 +82,31 @@ class Handler:
         if errno == server.E_OK:
             print '[+] on_get_actor_info ok'
             print data
-            self.state = STATE_DONE
+            print ''
+            # self.state = STATE_DONE
+            self._remote(sock, 'get_actor_level_info', username=u'主宰')
         else:
             print '[-] on_get_actor_info failed'
             self.state = STATE_DONE
 
     def on_get_actor_info_error(self, sock, error):
+        print '[-] on_get_actor_info_error'
+        self.state = STATE_DONE
+
+    def on_get_actor_level_info(self, sock, **response):
+        errno = response.get('errno', -1)
+        if errno == -1:
+            raise Exception('fatal error')
+
+        if errno == server.E_OK:
+            print '[+] on_get_actor_level_info ok'
+            print response.get('actor_level_info', None)
+            self.state = STATE_DONE
+        else:
+            print '[-] on_get_actor_level_info failed, errno:', errno
+            self.state = STATE_DONE
+
+    def on_get_actor_level_info_error(self, sock, error):
         print '[-] on_get_actor_info_error'
         self.state = STATE_DONE
 
