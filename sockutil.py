@@ -295,7 +295,7 @@ class SockUtil:
                     # TODO: drop current connection/socket
                     raise Exception('uncaught remote error')
 
-    def register_handler(self, key, handler):
+    def register_handler(self, key, handler, force=False):
         """register_handler: $(key)_request will be register
         Exception
 
@@ -306,7 +306,7 @@ class SockUtil:
             raise ValueError('key is None')
 
         key = '%s_request' % key
-        if self.handler_map.has_key(key):
+        if ((not force) and self.handler_map.has_key(key)):
             raise ValueError('key: {0} already register'.format(key))
 
         if not callable(handler):

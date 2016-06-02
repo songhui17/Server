@@ -669,6 +669,12 @@ class Server:
         import game
         self.shoot_game = game.ShootGame(self.sockutil, self.client_sock)
         self.shoot_game.start(level_id=level_id)
+    
+    def handle_leave_level(self):
+        if self.shoot_game:
+            self.shoot_game.destroy()
+            self.shoot_game = None
+        return message.LeaveLevelRequestResponse(E_OK)
 
     # TODO:
     # def handle_finish_level(self):
@@ -976,6 +982,8 @@ class Server:
             'get_level_info', self.handle_get_level_info)
         self.sockutil.register_handler(
             'start_level', self.handle_start_level)
+        self.sockutil.register_handler(
+            'leave_level', self.handle_leave_level)
 
         print '[+] init done'
         print ''

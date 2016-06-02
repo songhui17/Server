@@ -341,7 +341,49 @@ type_map = {
                 'type': 'int'
             }
         ]
-    }
+    },
+    'enter_level_request': {
+        'name': 'enter_level_request',
+        'fields': [
+        ]
+    },
+    'enter_level_request_response': {
+        'name': 'enter_level_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+    'finish_level_request': {
+        'name': 'finish_level_request',
+        'fields': [
+        ]
+    },
+    'finish_level_request_response': {
+        'name': 'finish_level_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+    'leave_level_request': {
+        'name': 'leave_level_request',
+        'fields': [
+        ]
+    },
+    'leave_level_request_response': {
+        'name': 'leave_level_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
 }
 
 def to_csharp_name(name):
@@ -444,7 +486,7 @@ namespace Shooter
                              '\n'.join(fields_xxx),
                              '\n'.join(to_string_xxx),
                              wrap_class)
-    fname = '%s\%s.cs' % (dirname, class_name)
+    fname = '%s.cs' % path.join(dirname, class_name)
     print 'write to', fname,
     with open(fname, 'w') as f:
         f.write(text)
@@ -465,9 +507,13 @@ def create_python_class(type_def, lines=[]):
     lines.append('    def __init__(self, *args):')
 
     fields = type_def.get('fields')
-    for i, field in enumerate(fields):
-        field_name = field.get('name')
-        lines.append('        self.{0} = args[{1}]'.format(field_name, i))
+    if len(fields) > 0:
+        for i, field in enumerate(fields):
+            field_name = field.get('name')
+            lines.append('        self.{0} = args[{1}]'.format(field_name, i))
+    else:
+        lines.append('        pass')
+
     lines.append('')
     lines.append('    def dump(self):')
     lines.append('        ret = {}')
