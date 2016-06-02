@@ -101,7 +101,9 @@ class Handler:
         if errno == server.E_OK:
             print '[+] on_get_actor_level_info ok'
             print response.get('actor_level_info', None)
-            self.state = STATE_DONE
+            print ''
+            # self.state = STATE_DONE
+            self._remote(sock, 'get_level_info', username=u'主宰')
         else:
             print '[-] on_get_actor_level_info failed, errno:', errno
             self.state = STATE_DONE
@@ -109,6 +111,21 @@ class Handler:
     def on_get_actor_level_info_error(self, sock, error):
         print '[-] on_get_actor_info_error'
         self.state = STATE_DONE
+
+    def on_get_level_info(self, sock, **response):
+        errno = response.get('errno', -1)
+        if errno == server.E_OK:
+            print '[+] on_get_level_info ok'
+            print response.get('level_info', None)
+            print ''
+            self.state = STATE_DONE
+        else:
+            print '[-] on_get_level_info failed, errno:', errno
+            self.state = STATE_DONE
+    def on_get_level_info_error(self, sock, error):
+        print '[-] on_get_level_info_error'
+        self.state = STATE_DONE
+
 
 def main():
     sock = socket(AF_INET, SOCK_STREAM)
@@ -148,12 +165,13 @@ def main():
                 if len(buf) >= 2:
                     prev_index = index
 
-                    msg_length = strtob128(buf[index:index+3])
+                    msg_length = strtob128(buf[index:index+2])
                     index+=2
-                    if msg_length > 1024:
+                    if msg_length > 10240:
                         # TODO: handle and close socket
-                        raise Exception('fatal error')
-                    if msg_length < len(buf) - index:
+                        raise Exception('fatal error, '
+                                        'msg_legnth: %s > 10240' % msg_length)
+                    if msg_length > len(buf) - index:
                         # not ready
                         index = prev_index
                     else:

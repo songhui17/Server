@@ -31,7 +31,7 @@ def dump(value):
     elif isinstance(value, (tuple, list)):
         # raise Exception('tuple and list is not supported')
         print '[X] tuple and list must contains single type'
-        return value
+        return [dump(v) for v in value]
     else:
         value_dump = getattr(value, 'dump')
         return value_dump()
@@ -113,7 +113,7 @@ class SockUtil:
             print '[-] failed to encode message'
             raise
         handler = wrapped.get('handler')
-        assert(handler is not None, 'handler name must be given')
+        assert handler is not None, 'handler name must be given'
         total_length = len(payload) + 2 + len(handler)
         # import pdb; pdb.set_trace()
         message = '%s%s%s%s' % (b128tostr(total_length),
@@ -151,6 +151,7 @@ class SockUtil:
         wrapped = {
             'type': 'request',
             'request_id': self.request_id,
+            'require_response': callback is not None,
             'handler': '%s_request' % method,
             # 'args': args,  # remove args
             # 'kwargs': kwargs,
@@ -214,7 +215,7 @@ class SockUtil:
             raise
         except:
             # TODO: concrete
-            print '[-] failed to parse response'
+            print '[-] failed to parse response', payload
             raise
 
         print '[+] recv', message
@@ -234,10 +235,11 @@ class SockUtil:
                 import pdb; pdb.set_trace()
 
             request_id = message.get('request_id', None)
+            require_response = message.get('require_response', False)
             if general_handler:
                 try:
                     ret = general_handler(*args, **kwargs)
-                    if request_id is not None:
+                    if request_id is not None and require_response:
                         print '[+] send response:', ret
                         self.send_response(sock, request_id, handler_name, response=ret)
                 except Exception, ex:
@@ -267,9 +269,9 @@ class SockUtil:
                 if callback:
                     try:
                         if isinstance(response, dict):
-                            callback(sock, **response)  # *args, **kwargs)
+                            callback(sock, request_id=request_id, **response)  # *args, **kwargs)
                         else:
-                            callback(sock, response)
+                            callback(sock, response, request_id=request_id)
                     except Exception, ex:
                         print '[-] failed to callback', ex
                     except:
@@ -281,17 +283,17 @@ class SockUtil:
                 if errorcallback:
                     try:
                         if isinstance(error, dict):
-                            errorcallback(sock, **error)  # *args, **kwargs)
+                            errorcallback(sock, request_id=request_id, **error)  # *args, **kwargs)
                         else:
-                            errorcallback(sock, error)
+                            errorcallback(sock, error, request_id)
                     except Exception, ex:
                         print '[-] failed to callback', ex
                     except:
                         print '[-] failed to callback'
                 else:
                     print '[-] no errorcallback for request_id:', request_id
-                    # TODO: raise?
-                    raise 'uncaught remote error'
+                    # TODO: drop current connection/socket
+                    raise Exception('uncaught remote error')
 
     def register_handler(self, key, handler):
         """register_handler: $(key)_request will be register

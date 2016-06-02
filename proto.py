@@ -221,6 +221,126 @@ type_map = {
                 'type': 'int'
             }
         ]
+    },
+    'get_level_info_request': {
+        'name': 'get_level_info_request',
+        'fields': [
+            {
+                'name': 'username',
+                'type': 'string'
+            }
+        ]
+    },
+    'level_info': {
+        'name': 'level_info',
+        'fields': [
+            {
+                'name': 'level_id',
+                'type': 'int'
+            },
+            {
+                'name': 'title',
+                'type': 'string'
+            },
+            {
+                'name': 'task1',
+                'type': 'string'
+            },
+            {
+                'name': 'task2',
+                'type': 'string'
+            },
+            {
+                'name': 'task3',
+                'type': 'string'
+            },
+            {
+                'name': 'bonuses',
+                'type': 'list string'
+            }
+        ]
+    },
+    'get_level_info_request_response': {
+        'name': 'get_level_info_request_response',
+        'fields': [
+            {
+                'name': 'level_info',
+                'type': 'list level_info'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+    'start_level_request' : {
+        'name': 'start_level_request',
+        'fields': [
+            {
+                'name': 'actor_id',
+                'type': 'int'
+            },
+            {
+                'name': 'level_id',
+                'type': 'int'
+            }
+        ]
+    },
+    'start_level_request_response' : {
+        'name': 'start_level_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+    'vector3': {
+        'name': 'vector3',
+        'fields': [
+            {
+                'name': 'x',
+                'type': 'float'
+            },
+            {
+                'name': 'y',
+                'type': 'float'
+            },
+            {
+                'name': 'z',
+                'type': 'float'
+            },
+        ]
+    },
+    'spawn_bot_request': {
+        'name': 'spawn_bot_request',
+        'fields': [
+            {
+                'name': 'bot_id',
+                'type': 'int'
+            },
+            {
+                'name': 'bot_type',
+                'type': 'string'
+            },
+            {
+                'name': 'position',
+                'type': 'vector3'
+            },
+            {
+                'name': 'rotation',
+                'type': 'float'
+            }
+        ]
+    },
+    'spawn_bot_request_response': {
+        'name': 'spawn_bot_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
     }
 }
 
@@ -246,7 +366,9 @@ def to_csharp_type(type_name):
             return to_csharp_name(type_name)
 
 
-def create_csharp_class(type_def, dirname, responses=[], des_template=''):
+def create_csharp_class(type_def, dirname,
+                        responses=[], des_template='',
+                        requests=[], req_template=''):
     # import pdb; pdb.set_trace()
 
     name = type_def.get('name')
@@ -309,6 +431,15 @@ namespace Shooter
         des = des_template % (name, class_name, class_name)
         responses.append(des)
 
+    # request handler
+    if name.endswith('request'):
+        req = req_template % (name,
+                              class_name, class_name,
+                              class_name,
+                              class_name,
+                              class_name)
+        requests.append(req)
+
     text = class_template % (class_name_xxx,
                              '\n'.join(fields_xxx),
                              '\n'.join(to_string_xxx),
@@ -367,6 +498,13 @@ namespace Shooter
             return null;
         }
     }
+
+    public class RequestHandlerDispatcher {
+        public static bool HandleRequest(SockUtil sockUtil_, IRequestHandler h_, string handler_, string payload_) {
+            %s
+            return false;
+        }
+    }
 }
 '''
 deserialize_case_tempalate = r'''
@@ -376,16 +514,39 @@ deserialize_case_tempalate = r'''
                 return response.response;
             }
 '''
+handle_request_template = r'''
+            if (handler_ == "%s") {
+                var request = JsonUtility.FromJson<BaseRequest<%s>>(payload_) as BaseRequest<%s>;
+                var requestId = request.request_id;
+                var requireResponse = request.require_response;
+                var ret = h_.RecvMessage(request.request) as %sResponse;
+                if (requireResponse) {
+                    var xxx_response = new _%sResponse() {
+                        handler = string.Format("{0}_response", handler_),
+                        type = "response",
+                        request_id = requestId,
+                        response = ret,
+                    };
+                    sockUtil_.SendMessage<_%sResponse>(xxx_response, xxx_response.handler);
+                }
+                return true;
+            }
+'''
+
 responses = []
+requests = []
 for k, v in type_map.iteritems():
-    create_csharp_class(v, dirname, responses, deserialize_case_tempalate)
+    create_csharp_class(v, dirname,
+                        responses, deserialize_case_tempalate,
+                        requests, handle_request_template)
 print 'done'
 
 des_fname = '%s/ResponseDeserializer.cs' % dirname
 print 'write to', des_fname
 with open(des_fname, 'w') as f:
     text = ''.join(responses)
-    f.write(deserializer_template % text)
+    text2 = ''.join(requests)
+    f.write(deserializer_template % (text, text2))
 
 print 'generate python class for message(request/response)'
 lines = []

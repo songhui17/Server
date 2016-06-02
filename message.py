@@ -14,16 +14,44 @@ class GetAccountInfoRequestResponse:
         return ret
 
 
-class GetActorLevelInfoRequestResponse:
+class GetActorInfoRequestResponse:
 
     def __init__(self, *args):
-        self.actor_level_info = args[0]
+        self.actor_info = args[0]
         self.errno = args[1]
 
     def dump(self):
         ret = {}
-        ret['actor_level_info'] = server.dump(self.actor_level_info)
+        ret['actor_info'] = server.dump(self.actor_info)
         ret['errno'] = server.dump(self.errno)
+        return ret
+
+
+class Account:
+
+    def __init__(self, *args):
+        self.name = args[0]
+        self.actor_id = args[1]
+
+    def dump(self):
+        ret = {}
+        ret['name'] = server.dump(self.name)
+        ret['actor_id'] = server.dump(self.actor_id)
+        return ret
+
+
+class Vector3:
+
+    def __init__(self, *args):
+        self.x = args[0]
+        self.y = args[1]
+        self.z = args[2]
+
+    def dump(self):
+        ret = {}
+        ret['x'] = server.dump(self.x)
+        ret['y'] = server.dump(self.y)
+        ret['z'] = server.dump(self.z)
         return ret
 
 
@@ -48,29 +76,16 @@ class ActorLevelInfo:
         return ret
 
 
-class GetActorInfoRequestResponse:
+class GetLevelInfoRequestResponse:
 
     def __init__(self, *args):
-        self.actor_info = args[0]
+        self.level_info = args[0]
         self.errno = args[1]
 
     def dump(self):
         ret = {}
-        ret['actor_info'] = server.dump(self.actor_info)
+        ret['level_info'] = server.dump(self.level_info)
         ret['errno'] = server.dump(self.errno)
-        return ret
-
-
-class Account:
-
-    def __init__(self, *args):
-        self.name = args[0]
-        self.actor_id = args[1]
-
-    def dump(self):
-        ret = {}
-        ret['name'] = server.dump(self.name)
-        ret['actor_id'] = server.dump(self.actor_id)
         return ret
 
 
@@ -130,6 +145,17 @@ class CreateActorRequest:
         return ret
 
 
+class StartLevelRequestResponse:
+
+    def __init__(self, *args):
+        self.errno = args[0]
+
+    def dump(self):
+        ret = {}
+        ret['errno'] = server.dump(self.errno)
+        return ret
+
+
 class GetActorLevelInfoRequest:
 
     def __init__(self, *args):
@@ -138,6 +164,19 @@ class GetActorLevelInfoRequest:
     def dump(self):
         ret = {}
         ret['username'] = server.dump(self.username)
+        return ret
+
+
+class GetActorLevelInfoRequestResponse:
+
+    def __init__(self, *args):
+        self.actor_level_info = args[0]
+        self.errno = args[1]
+
+    def dump(self):
+        ret = {}
+        ret['actor_level_info'] = server.dump(self.actor_level_info)
+        ret['errno'] = server.dump(self.errno)
         return ret
 
 
@@ -154,6 +193,66 @@ class LoginRequest:
         return ret
 
 
+class GetLevelInfoRequest:
+
+    def __init__(self, *args):
+        self.username = args[0]
+
+    def dump(self):
+        ret = {}
+        ret['username'] = server.dump(self.username)
+        return ret
+
+
+class SpawnBotRequestResponse:
+
+    def __init__(self, *args):
+        self.errno = args[0]
+
+    def dump(self):
+        ret = {}
+        ret['errno'] = server.dump(self.errno)
+        return ret
+
+
+class SpawnBotRequest:
+
+    def __init__(self, *args):
+        self.bot_id = args[0]
+        self.bot_type = args[1]
+        self.position = args[2]
+        self.rotation = args[3]
+
+    def dump(self):
+        ret = {}
+        ret['bot_id'] = server.dump(self.bot_id)
+        ret['bot_type'] = server.dump(self.bot_type)
+        ret['position'] = server.dump(self.position)
+        ret['rotation'] = server.dump(self.rotation)
+        return ret
+
+
+class LevelInfo:
+
+    def __init__(self, *args):
+        self.level_id = args[0]
+        self.title = args[1]
+        self.task1 = args[2]
+        self.task2 = args[3]
+        self.task3 = args[4]
+        self.bonuses = args[5]
+
+    def dump(self):
+        ret = {}
+        ret['level_id'] = server.dump(self.level_id)
+        ret['title'] = server.dump(self.title)
+        ret['task1'] = server.dump(self.task1)
+        ret['task2'] = server.dump(self.task2)
+        ret['task3'] = server.dump(self.task3)
+        ret['bonuses'] = server.dump(self.bonuses)
+        return ret
+
+
 class GetActorInfoRequest:
 
     def __init__(self, *args):
@@ -162,6 +261,19 @@ class GetActorInfoRequest:
     def dump(self):
         ret = {}
         ret['username'] = server.dump(self.username)
+        return ret
+
+
+class StartLevelRequest:
+
+    def __init__(self, *args):
+        self.actor_id = args[0]
+        self.level_id = args[1]
+
+    def dump(self):
+        ret = {}
+        ret['actor_id'] = server.dump(self.actor_id)
+        ret['level_id'] = server.dump(self.level_id)
         return ret
 
 

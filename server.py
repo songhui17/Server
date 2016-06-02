@@ -124,7 +124,7 @@ def create_account(userdb_, username_, password_):
 def db_login(userdb_, username_, password_):
     """db_login(...) -> T|F, E_NO
 
-    Error number:
+    Errno:
 
     E_OK
     E_NO_USERNAME
@@ -370,7 +370,7 @@ class Server:
         """login -> T|F, errno, create actor instance in
         actormap_ if there is actor bound to this account
 
-        ErrorNo:
+        Errno:
 
         E_OK
         E_NO_USERNAME
@@ -431,7 +431,7 @@ class Server:
         """handle_get_actor_info -> dict { name, level, gold, experience }
         | E_NO or None on error
 
-        Error number:
+        Errno:
 
         E_OK
         E_USER_NOT_LOGINED
@@ -488,7 +488,7 @@ class Server:
         """
         try:
             actor = self.actormap[actor_id]
-            assert(actor.account is not None, 'account must be assgined')
+            assert actor.account is not None, 'account must be assgined'
             if not actor.account.logined:
                 raise NotLoginedError()
             return message.GetActorInfoRequestResponse(actor.dump(), E_OK)
@@ -500,7 +500,7 @@ class Server:
     def handle_get_account_info(self, username):
         """handle_get_account_info -> account.dump(), E_NO
 
-        Err Num:
+        Errno:
         
         E_OK
         E_USER_NOT_LOGINED
@@ -527,7 +527,7 @@ class Server:
         """handle_create_actor -> T|F, E_NO
         :insert into actordb, create instance into actormap
 
-        Error number:
+        Errno:
 
         E_OK
         E_USER_NOT_LOGINED
@@ -622,43 +622,104 @@ class Server:
         return message.GetActorLevelInfoRequestResponse(level_data, E_OK)
                 # {i: j for i, j in enumerate(level_data)}, E_OK)
 
+    def handle_get_level_info(self, username):
+        """handle_get_level_info -> level_info, errno
+
+        Errno:
+
+        E_OK
+        E_USER_NOT_LOGINED
+
+        Exception:
+
+        InvalidUsername
+        """
+        validate_username(username)
+        account = self.accountmap.get(username, None)
+        if not account:
+            print '[-] user: {0} is not logined'.format(username)
+            return message.GetLevelInfoRequestResponse(None, E_USER_NOT_LOGINED)
+
+        level_info = [
+            message.LevelInfo(
+                v['level_id'],
+                v['title'],
+                v['task1'],
+                v['task2'],
+                v['task3'],
+                v['bonuses']) for v in self.leveldb.itervalues()]
+        return message.GetLevelInfoRequestResponse(level_info, E_OK)
+
+    def handle_start_level(self, actor_id, level_id):
+        """handle_start_level -> E_NO
+
+        ErrorNo:
+
+        E_OK
+        E_USER_NOT_LOGINED
+
+        """
+        actor = self.actormap.get(actor_id, None)
+        if actor is None:
+            return E_USER_NOT_LOGINED
+
+        if self.shoot_game is not None:
+            raise NotImplemented('ShootGame is running')
+
+        import game
+        self.shoot_game = game.ShootGame(self.sockutil, self.client_sock)
+        self.shoot_game.start(level_id=level_id)
+
+    # TODO:
+    # def handle_finish_level(self):
+    #     pass
+
     def load_leveldb(self, leveldb):
         """load_leveldb: init level database
         """
         leveldb[0] = {
             'level_id': 0,
-            'title': 'level_0',
-            'task1': 'task desc 1',
-            'task2': 'task desc 2',
-            'task3': 'task desc 3',
-            'bonuses': ['a', 'b']
+            'title': u'磨刀霍霍',
+            'task1': u'击败1个蜘蛛',
+            'task2': u'击败2个蜘蛛',
+            'task3': u'击败3个蜘蛛',
+            'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
         }
 
         leveldb[1] = {
             'level_id': 1,
-            'title': 'level_1',
-            'task1': 'task desc 1',
-            'task2': 'task desc 2',
-            'task3': 'task desc 3',
-            'bonuses': ['a', 'b']
+            'title': '小试牛刀',
+            'task1': '完成1次双杀',
+            'task2': '击败隐藏僵尸',
+            'task3': '血量不少于50%',
+            'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
         }
 
         leveldb[2] = {
             'level_id': 2,
-            'title': 'level_2',
-            'task1': 'task desc 1',
-            'task2': 'task desc 2',
-            'task3': 'task desc 3',
-            'bonuses': ['a', 'b']
+            'title': '千钧一发',
+            'task1': '任务一',
+            'task2': '任务二',
+            'task3': '任务三',
+            'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
         }
 
         leveldb[3] = {
             'level_id': 3,
-            'title': 'level_3',
-            'task1': 'task desc 1',
-            'task2': 'task desc 2',
-            'task3': 'task desc 3',
-            'bonuses': ['a', 'b']
+            'title': '骑虎难下',
+            'task1': '任务一',
+            'task2': '任务二',
+            'task3': '任务三',
+            'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
+        }
+
+        leveldb[4] = {
+            'level_id': 4,
+            'title': '决战千里',
+            'task1': '任务一',
+            'task2': '任务二',
+            'task3': '任务三',
+            'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
         }
 
     def load_actorleveldb(self, actorleveldb):
@@ -698,6 +759,160 @@ class Server:
             "star3": False,
         }
 
+    def _process_command(self, command):
+        tokens = command.split(' ')
+        if tokens[0] == 'login':
+            if len(tokens) == 3:
+                try:
+                    username, password = tokens[1], tokens[2]
+                    self.handle_login(username, password)
+                except Exception, ex:
+                    print '[-] failed to login:', ex
+            else:
+                print '[-] syntax error: login username password'
+        elif tokens[0] == 'get_account_info':
+            if len(tokens) == 2:
+                try:
+                    username = tokens[1]
+                    result = self.handle_get_account_info(username)
+                    print result.account_info
+                except Exception, ex:
+                    print ex
+            else:
+                print '[-] syntax error: get_account_info username'
+        elif tokens[0] == 'get_actor_info':
+            if len(tokens) == 2:
+                try:
+                    username = tokens[1]
+                    result = self.handle_get_actor_info(username)
+                    if result.actor_info:
+                        print 'actor_info:', result.actor_info
+                    else:
+                        # user not logined
+                        pass
+                except Exception, ex:
+                    print ex
+            else:
+                print '[-] syntax error: get_actor_info username'
+        elif tokens[0] == 'create_actor':
+            if len(tokens) == 3:
+                try:
+                    username = tokens[1]
+                    actor_type = tokens[2]
+                    result = self.handle_create_actor(
+                        username, actor_type)
+                    if not result.result:
+                        print '[-] failed to create actor',\
+                            'errno:', result.errno
+                except Exception, ex:
+                    print 'failed to create_actor:', ex
+            else:
+                print '[-] syntax error:',\
+                    'create_actor username actor_name := [sniper]'
+        elif tokens[0] == 'get_actor_level_info':
+            if len(tokens) == 2:
+                try:
+                    username = tokens[1]
+                    ret = self.handle_get_actor_level_info(username)
+                    print ret
+                except Exception, ex:
+                    print '[-] failed to get_actor_info:', ex
+            else:
+                print '[-] syntax error:'\
+                    'get_actor_level_info username'
+        elif tokens[0] == 'get_level_info':
+            if len(tokens) == 2:
+                try:
+                    username = tokens[1]
+                    ret = self.handle_get_level_info(username)
+                    print ret.dump()
+                except Exception, ex:
+                    print '[-] failed to get_level_info:', ex
+            else:
+                print '[-] syntax error:',\
+                    'get_level_info username'
+        elif tokens[0] == 'start_level':
+            if len(tokens) == 3:
+                try:
+                    actor_id = int(tokens[1])
+                    level_id = int(tokens[2])
+                    self.handle_start_level(actor_id, level_id)
+                except Exception, ex:
+                    print '[-] failed to start_level:', ex
+            else:
+                print '[-] syntax error:',\
+                   'start_level actor_id level_id'  
+        elif tokens[0] == 'break':
+            import pdb; pdb.set_trace()
+            subcommand = command[len('break'):].strip()
+            if subcommand:
+                self._process_command(subcommand)
+        elif tokens[0] == 'exit':
+            print '[+] exit, 88'
+            # break
+        return tokens[0]
+
+    def _process_network(self):
+        sockutil = self.sockutil
+
+        read_socks = [self.listen_sock]
+        if self.client_sock:
+            read_socks.append(self.client_sock)
+
+        read_socks, _, _= select.select(read_socks, [], [], 1)
+        if self.client_sock in read_socks:
+            recved = ''
+            try:
+                recved = self.client_sock.recv(1024)
+            except Exception, ex:
+                print ex
+
+            print '[+] recved', recved
+            if len(recved) == 0:
+                print '[+] close socket'
+                self.client_sock.close()
+                self.client_sock = None
+            
+            self.buf += recved
+            while True:
+                self.buf = self.buf[self.index:]
+                self.index = 0
+                if len(self.buf) >= 2:
+                    prev_index = self.index
+
+                    msg_length = strtob128(self.buf[self.index:self.index+2])
+                    self.index+=2
+                    if msg_length > 10240:
+                        # TODO: handle and close socket
+                        raise Exception('fatal error')
+                    if msg_length > len(self.buf) - self.index:
+                        # not ready
+                        import pdb; pdb.set_trace()
+                        print '[-] not ready msg_length:', msg_length
+                        self.index = prev_index
+                        break
+                    else:
+                        payload = self.buf[self.index:self.index+msg_length]
+                        self.index += msg_length
+                        sockutil.recv_message(self.client_sock, payload)
+                else:
+                    break
+
+        if self.listen_sock in read_socks:
+            if self.client_sock:
+                # TODO: multi clients
+                print '[-] multi client is not implemented',\
+                    'close the prev client'
+                import pdb; pdb.set_trace()
+                self.client_sock.close()
+                self.index = 0
+                self.buf = ''
+
+            self.client_sock, client_addr = self.listen_sock.accept()
+            print '[+] recv client:', client_addr
+        # print '.',
+        time.sleep(0.05)
+
     def main(self, args):
         """main flow ([+] are requests)
 
@@ -735,25 +950,47 @@ class Server:
         self.load_actorleveldb(self.actorleveldb)
 
         print '[+] init listening socket'
-        listen_sock = socket(AF_INET, SOCK_STREAM)
-        print listen_sock
-        listen_sock.bind(('127.0.0.1', 10240))
-        listen_sock.listen(10)
-        print '[+] sockname:', listen_sock.getsockname()
+        self.listen_sock = socket(AF_INET, SOCK_STREAM)
+        self.listen_sock.bind(('127.0.0.1', 10240))
+        self.listen_sock.listen(10)
+        print '[+] sockname:', self.listen_sock.getsockname()
 
-        client_sock = None
-        buf = ''
-        index = 0
-        sockutil = SockUtil()
-        sockutil.register_handler('login', self.handle_login)
-        sockutil.register_handler('logout', self.handle_logout)
-        sockutil.register_handler('get_account_info', self.handle_get_account_info)
-        sockutil.register_handler('create_actor', self.handle_create_actor)
-        sockutil.register_handler('get_actor_info', self.handle_get_actor_info)
-        sockutil.register_handler('get_actor_level_info', self.handle_get_actor_level_info)
+        self.client_sock = None
+        self.buf = ''
+        self.index = 0
+
+        self.sockutil = SockUtil()
+        self.sockutil.register_handler(
+            'login', self.handle_login)
+        self.sockutil.register_handler(
+            'logout', self.handle_logout)
+        self.sockutil.register_handler(
+            'get_account_info', self.handle_get_account_info)
+        self.sockutil.register_handler(
+            'create_actor', self.handle_create_actor)
+        self.sockutil.register_handler(
+            'get_actor_info', self.handle_get_actor_info)
+        self.sockutil.register_handler(
+            'get_actor_level_info', self.handle_get_actor_level_info)
+        self.sockutil.register_handler(
+            'get_level_info', self.handle_get_level_info)
+        self.sockutil.register_handler(
+            'start_level', self.handle_start_level)
 
         print '[+] init done'
         print ''
+
+        self.shoot_game = None
+
+        if args.command:
+            pre_command = [
+                'login abc abc',
+                'create_actor abc sniper',
+                'start_level 0 0'
+            ]
+
+            for c in pre_command:
+                self._process_command(c)
 
         try:
             while True:
@@ -762,141 +999,24 @@ class Server:
                 if args.command:
                     print '>',
                     command = raw_input()
-                else:
-                    read_socks = [listen_sock]
-                    if client_sock:
-                        read_socks.append(client_sock)
-
-                    read_socks, _, _= select.select(read_socks, [], [], 1)
-                    if client_sock in read_socks:
-                        recved = ''
-                        try:
-                            recved = client_sock.recv(1024)
-                        except Exception, ex:
-                            print ex
-
-                        print '[+] recved', recved
-                        if len(recved) == 0:
-                            print '[+] close socket'
-                            client_sock.close()
-                            client_sock = None
-                        
-                        buf += recved
-                        while True:
-                            buf = buf[index:]
-                            index = 0
-                            if len(buf) >= 2:
-                                prev_index = index
-
-                                msg_length = strtob128(buf[index:index+2])
-                                index+=2
-                                if msg_length > 1024:
-                                    # TODO: handle and close socket
-                                    raise Exception('fatal error')
-                                if msg_length > len(buf) - index:
-                                    # not ready
-                                    import pdb; pdb.set_trace()
-                                    print '[-] not ready msg_length:', msg_length
-                                    index = prev_index
-                                    break
-                                else:
-                                    payload = buf[index:index+msg_length]
-                                    index += msg_length
-                                    sockutil.recv_message(client_sock, payload)
-                            else:
-                                break
-
-                    if listen_sock in read_socks:
-                        if client_sock:
-                            # TODO: multi clients
-                            print '[-] multi client is not implemented',\
-                                'close the prev client'
-                            import pdb; pdb.set_trace()
-                            client_sock.close()
-                            index = 0
-                            buf = ''
-
-                        client_sock, client_addr = listen_sock.accept()
-                        print '[+] recv client:', client_addr
-                    # print '.',
-                    time.sleep(0.05)
-
-                if command:
-                    tokens = command.split(' ')
-                    if tokens[0] == 'login':
-                        if len(tokens) == 3:
-                            try:
-                                username, password = tokens[1], tokens[2]
-                                self.handle_login(username, password)
-                            except Exception, ex:
-                                print '[-] failed to login:', ex
-                        else:
-                            print '[-] syntax error: login username password'
-                    elif tokens[0] == 'get_account_info':
-                        if len(tokens) == 2:
-                            try:
-                                username = tokens[1]
-                                account_info = self.handle_get_account_info(username)
-                                print account_info
-                            except Exception, ex:
-                                print ex
-                        else:
-                            print '[-] syntax error: get_account_info username'
-                    elif tokens[0] == 'get_actor_info':
-                        if len(tokens) == 2:
-                            try:
-                                username = tokens[1]
-                                actor_info, errno = self.handle_get_actor_info(username)
-                                if actor_info:
-                                    print 'actor_info:', actor_info
-                                else:
-                                    # user not logined
-                                    pass
-                            except Exception, ex:
-                                print ex
-                        else:
-                            print '[-] syntax error: get_actor_info username'
-                    elif tokens[0] == 'create_actor':
-                        if len(tokens) == 3:
-                            try:
-                                username = tokens[1]
-                                actor_type = tokens[2]
-                                ret, errno = self.handle_create_actor(
-                                    username, actor_type)
-                                if not ret:
-                                    print '[-] failed to create actor',\
-                                        'errno:', errno
-                            except Exception, ex:
-                                print ex
-                        else:
-                            print '[-] syntax error:',\
-                                'create_actor username actor_name := [sniper]'
-                    elif tokens[0] == 'get_actor_level_info':
-                        if len(tokens) == 2:
-                            try:
-                                username = tokens[1]
-                                ret = self.handle_get_actor_level_info(username)
-                                print ret
-                            except Exception, ex:
-                                print '[-] failed to get_actor_info:', ex
-                        else:
-                            print '[-] syntax error:'\
-                                'get_actor_level_info username'
-                    elif tokens[0] == 'break':
-                        import pdb; pdb.set_trace()
-                    elif tokens[0] == 'exit':
-                        print '[+] exit, 88'
+                    if self._process_command(command) == 'exit':
                         break
+                else:
+                    self._process_network()
+
+                if self.shoot_game:
+                    self.shoot_game.update()
+
         except (Exception, KeyboardInterrupt) as ex:
             print ex
 
-        if client_sock:
+        if self.client_sock:
             print '[-] close client socket'
-            client_sock.close()
+            self.client_sock.close()
 
-        if listen_sock:
+        if self.listen_sock:
             print '[-] close listening socket'
-            listen_sock.close()
+            self.listen_sock.close()
 
 
 def main():
