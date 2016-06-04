@@ -231,8 +231,8 @@ class SockUtil:
 
             handler_name = message.get('handler', None)
             general_handler = self.handler_map.get(handler_name, None)
-            if general_handler == 'get_actor_level_info_request':
-                import pdb; pdb.set_trace()
+            # if general_handler == 'get_actor_level_info_request':
+                # import pdb; pdb.set_trace()
 
             request_id = message.get('request_id', None)
             require_response = message.get('require_response', False)

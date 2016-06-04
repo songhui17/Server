@@ -495,7 +495,7 @@ class Server:
         except KeyError, ex:
             # (1) actor created?
             # (2) actordb in db?
-            raise NotImplemented('handle actor instance not created')
+            raise NotImplementedError('handle actor instance not created')
 
     def handle_get_account_info(self, username):
         """handle_get_account_info -> account.dump(), E_NO
@@ -664,7 +664,7 @@ class Server:
             return E_USER_NOT_LOGINED
 
         if self.shoot_game is not None:
-            raise NotImplemented('ShootGame is running')
+            raise NotImplementedError('ShootGame is running')
 
         import game
         self.shoot_game = game.ShootGame(self.sockutil, self.client_sock)
@@ -909,7 +909,6 @@ class Server:
                 # TODO: multi clients
                 print '[-] multi client is not implemented',\
                     'close the prev client'
-                import pdb; pdb.set_trace()
                 self.client_sock.close()
                 self.index = 0
                 self.buf = ''
@@ -957,7 +956,7 @@ class Server:
 
         print '[+] init listening socket'
         self.listen_sock = socket(AF_INET, SOCK_STREAM)
-        self.listen_sock.bind(('127.0.0.1', 10240))
+        self.listen_sock.bind((args.ip, args.port))
         self.listen_sock.listen(10)
         print '[+] sockname:', self.listen_sock.getsockname()
 
@@ -1030,6 +1029,8 @@ class Server:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--command', action='store_true')
+    parser.add_argument('--ip', dest='ip', default='127.0.0.1')
+    parser.add_argument('--port', dest='port', type=int, default=10240)
     args = parser.parse_args()
 
     server = Server()

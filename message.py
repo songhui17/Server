@@ -25,6 +25,16 @@ class EnterLevelRequestResponse:
         return ret
 
 
+class Level0BotKilledRequest:
+
+    def __init__(self, *args):
+        pass
+
+    def dump(self):
+        ret = {}
+        return ret
+
+
 class StartLevelRequestResponse:
 
     def __init__(self, *args):
@@ -227,6 +237,17 @@ class ActorLevelInfo:
         return ret
 
 
+class Level0BotKilledRequestResponse:
+
+    def __init__(self, *args):
+        self.errno = args[0]
+
+    def dump(self):
+        ret = {}
+        ret['errno'] = server.dump(self.errno)
+        return ret
+
+
 class Account:
 
     def __init__(self, *args):
@@ -253,10 +274,13 @@ class EnterLevelRequest:
 class FinishLevelRequest:
 
     def __init__(self, *args):
-        pass
+        self.win = args[0]
+        self.bonuses = args[1]
 
     def dump(self):
         ret = {}
+        ret['win'] = server.dump(self.win)
+        ret['bonuses'] = server.dump(self.bonuses)
         return ret
 
 

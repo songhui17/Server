@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 import message
 
 class Bot:
@@ -22,10 +23,15 @@ class ShootGame:
     finished = False
 
     def __init__(self, sockutil, client_sock):
+        # import pdb; pdb.set_trace()
         self.sockutil = sockutil
         self.client_sock = client_sock
 
-        self.sockutil.register_handler('enter_level', self.handle_enter_level, force=True);
+        self.sockutil.register_handler(
+            'enter_level', self.handle_enter_level, force=True);
+        self.sockutil.register_handler(
+            'level0_bot_killed', self.handle_level0_bot_killed, force=True);
+
         self._awake()
 
     def _awake(self):
@@ -40,15 +46,46 @@ class ShootGame:
         self._remote('start_level', actor_id=0, level_id=0)
     
     def handle_enter_level(self):
-        self._start_level0();
+        self.max_bot_count = 3
+        self.spawn_spot = [
+            (20, -0.05, 15, 90),
+            (18, -0.05, 16, 90),
+            (19, -0.05, 18, 90),
+        ]
 
-    def _start_level0(self):
-        self._spawn_bot('spider')
+        self.bot_count = 0
+        self.spawn_interval = 5
+        self.time_since_start = time.clock()
+        self.next_spawn_time = self.time_since_start + self.spawn_interval
 
-    def _spawn_bot(self, bot_type):
+        # self._start_level0();
+        spot = self.spawn_spot[self.bot_count]
+        self._spawn_bot('spider', x=spot[0], y=spot[1],
+                        z=spot[2], rot_y=spot[3])
+
+    def handle_level0_bot_killed(self):
+        if self.bot_count == self.max_bot_count:
+            print '[+] finish level0 bot_count=%d, max_bot_count=%d'\
+                % (self.bot_count, self.max_bot_count)
+            self._remote('finish_level')
+            self.finished = True
+        else:
+            print '[+] spawn bot level0 bot_count=%d, max_bot_count=%d'\
+                % (self.bot_count, self.max_bot_count)
+            spot = self.spawn_spot[self.bot_count]
+            self._spawn_bot('spider', x=spot[0], y=spot[1],
+                            z=spot[2], rot_y=spot[3])
+
+    # TODO
+    # def _start_level0(self):
+        # self._spawn_bot('spider')
+
+    def _spawn_bot(self, bot_type,
+                   x=0, y=0, z=0, rot_y=0):
+        self.bot_count += 1
         self._remote_callback(
             'spawn_bot', bot_id=self.bot_id, bot_type=bot_type,
-            position=message.Vector3(0,0,0), rotation=0)
+            position=message.Vector3(x,y,z), rotation=rot_y)
         self.bot_id += 1
 
     def _remote(self, method, *args, **kwargs):
@@ -66,11 +103,14 @@ class ShootGame:
         print 'ShootGame update'
         if self.finished:
             return
+        
+        # if (self.bot_count < self.max_bot_count
+                # and time.clock() > self.next_spawn_time):
+            # self.next_spawn_time += self.spawn_interval
+            # self._spawn_bot('spider')
 
-        import time
-        time.sleep(5)
-        self._remote('finish_level')
-        self.finished = True
+        # self._remote('finish_level')
+        # self.finished = True
 
     def destroy(self):
         pass

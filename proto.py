@@ -359,6 +359,14 @@ type_map = {
     'finish_level_request': {
         'name': 'finish_level_request',
         'fields': [
+            {
+                'name': 'win',
+                'type': 'bool'
+            },
+            {
+                'name': 'bonuses',
+                'type': 'list string'
+            }
         ]
     },
     'finish_level_request_response': {
@@ -384,6 +392,20 @@ type_map = {
             }
         ]
     },
+    'level0_bot_killed_request': {
+        'name': 'level0_bot_killed_request',
+        'fields': [
+        ]
+    },
+    'level0_bot_killed_request_response': {
+        'name': 'level0_bot_killed_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    }
 }
 
 def to_csharp_name(name):
