@@ -408,6 +408,49 @@ type_map = {
     }
 }
 
+errno = [
+    {
+        'name': 'E_OK',
+        'value': 0,
+        'doc': 'success'
+    },
+    {
+        'name': 'E_NO_USERNAME',
+        'value': 1,
+        'doc': 'no account with name username'
+    },
+    {
+        'name': 'E_INVALID_PASSWORD',
+        'value': 2,
+        'doc': 'invalid password'
+    },
+    {
+        'name': 'E_USER_NOT_LOGINED',
+        'value': 3,
+        'doc': 'user has not logined, login required'
+    },
+    {
+        'name': 'E_ACTOR_EXIST',
+        'value': 4,
+        'doc': 'actor already bound to account'
+    },
+    {
+        'name': 'E_ACTOR_NOT_CREATED',
+        'value': 5,
+        'doc': 'actor_id == -1, no actor bound to account'
+    },
+    {
+        'name': 'E_NO_SUCH_LEVEL',
+        'value': 6,
+        'doc': 'invalid level id'
+    },
+    {
+        'name': 'E_LEVEL_NOT_ALLOWED',
+        'value': 7,
+        'doc': 'invalid level id'
+    },
+]
+
 def to_csharp_name(name):
     tokens = name.split('_')
     cap_tokens = [''.join([token[0].upper(), token[1:]]) for token in tokens]
@@ -430,9 +473,22 @@ def to_csharp_type(type_name):
             return to_csharp_name(type_name)
 
 
+def to_python_type(type_name):
+    if type_name in ['int', 'float', 'bool']:
+        return type_name
+    elif type_name == 'string':
+        return 'str'
+    else:
+        if type_name.startswith('list '):
+            
+            return '%s[]' % to_python_type(type_name[4:].strip())
+        else:
+            return to_csharp_name(type_name)
+
 def create_csharp_class(type_def, dirname,
                         responses=[], des_template='',
-                        requests=[], req_template=''):
+                        requests=[], req_template='',
+                        sockutil_items=[]):
     # import pdb; pdb.set_trace()
 
     name = type_def.get('name')
@@ -495,6 +551,11 @@ namespace Shooter
         des = des_template % (name, class_name, class_name)
         responses.append(des)
 
+    sockutil_request_item_template = '''    public static int %s(%s request_, Action<%sResponse, int> callback_ = null) {
+        return SockUtil.Instance.SendRequest<%s, %sResponse>("%s", request_, callback_);
+    }
+'''
+    # sockutil_items = []
     # request handler
     if name.endswith('request'):
         req = req_template % (name,
@@ -503,6 +564,10 @@ namespace Shooter
                               class_name,
                               class_name)
         requests.append(req)
+
+        sockutil_items.append(sockutil_request_item_template %\
+            (class_name[0:-7], class_name, class_name,\
+            class_name, class_name, name[0:-8]))
 
     text = class_template % (class_name_xxx,
                              '\n'.join(fields_xxx),
@@ -525,27 +590,129 @@ def create_python_class(type_def, lines=[]):
         lines[-1] += '({0}):'.format(to_csharp_name(base_class))
     else:
         lines[-1] += ':'
-    lines.append('')
-    lines.append('    def __init__(self, *args):')
+
+    init_no_field = '''
+    def __init__(self):
+        pass'''
+
+    init_template='''
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+%s
+
+        """
+%s'''
+
+    doc_param_item_template='''        %s: %s'''
+    init_item_template='''        self.%s = kwargs.get('%s')'''
+
+    load_no_field = '''
+    def load(self):
+        pass'''
+
+    load_template='''
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+%s'''
+
+    load_item_template='''        self.%s = kwargs['%s']'''
+
+    dump_no_field = '''
+    def dump(self):
+        return {}'''
+
+    dump_template = '''
+    def dump(self):
+        """dump -> dict
+        """
+        ret = {}
+%s
+        return ret'''
+
+    dump_item_template='''        ret['%s'] = sockutil.dump(self.%s)'''
 
     fields = type_def.get('fields')
     if len(fields) > 0:
-        for i, field in enumerate(fields):
-            field_name = field.get('name')
-            lines.append('        self.{0} = args[{1}]'.format(field_name, i))
+        init_items = []
+        doc_param_items = []
+        load_items = []
+        dump_items = []
+        for field in fields:
+            field_name = field['name']
+            field_type = to_python_type(field['type'])
+            init_items.append(init_item_template % (field_name, field_name))
+            doc_param_items.append(
+                doc_param_item_template % (field_name, field_type))
+            load_items.append(load_item_template % (field_name, field_name))
+            dump_items.append(dump_item_template % (field_name, field_name))
+
+        init = init_template % ('\n'.join(doc_param_items), '\n'.join(init_items))
+        load = load_template % '\n'.join(load_items)
+        dump = dump_template % '\n'.join(dump_items)
+        lines.append(init) 
+        lines.append(load) 
+        lines.append(dump) 
     else:
-        lines.append('        pass')
+        lines.append(init_no_field)
+        lines.append(load_no_field)
+        lines.append(dump_no_field)
 
-    lines.append('')
-    lines.append('    def dump(self):')
-    lines.append('        ret = {}')
-    for i, field in enumerate(fields):
-        field_name = field.get('name')
-        lines.append('        ret[\'{0}\'] = server.dump(self.{0})'.format(field_name))
-    lines.append('        return ret')
 
     lines.append('')
     lines.append('')
+
+
+def create_python_errno(errno_list, fname):
+    python_template = '''#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+__all__ = [
+%s
+]
+
+
+%s
+'''
+    export_item_template = '''    '%s','''
+    enum_item_template = '''%s = %d               # %s'''
+    export_items = []
+    enum_items = []
+    for err in errno_list:
+        export_items.append(export_item_template % err['name'])
+        enum_items.append(
+            enum_item_template % (err['name'], err['value'], err['doc']))
+
+    with open(fname,'w') as f:
+        text = python_template % ('\n'.join(export_items),
+                                  '\n'.join(enum_items))
+        f.write(text)
+
+
+def create_csharp_errno(errno_list, fname):
+    csharp_template = '''namespace Shooter
+{
+    public enum ENUM_SHOOTER_ERROR {
+%s
+    }
+}
+'''
+    enum_item_template = '''        %s = %d,              // %s'''
+    enum_items = []
+    for err in errno_list:
+        enum_items.append(
+            enum_item_template % (err['name'], err['value'], err['doc']))
+
+    with open(fname,'w') as f:
+        text = csharp_template % '\n'.join(enum_items)
+        f.write(text)
 
 
 print 'generate c# class for message(request/response)'
@@ -601,24 +768,41 @@ handle_request_template = r'''
             }
 '''
 
+
 responses = []
 requests = []
+sockutil_items = []
 for k, v in type_map.iteritems():
     create_csharp_class(v, dirname,
                         responses, deserialize_case_tempalate,
-                        requests, handle_request_template)
+                        requests, handle_request_template,
+                        sockutil_items)
 print 'done'
 
-des_fname = '%s/ResponseDeserializer.cs' % dirname
+des_fname = path.join(dirname, 'ResponseDeserializer.cs')
 print 'write to', des_fname
 with open(des_fname, 'w') as f:
     text = ''.join(responses)
     text2 = ''.join(requests)
     f.write(deserializer_template % (text, text2))
 
+sockutil_template = '''
+using System;
+using Shooter;
+
+public partial class SockUtil {
+%s
+}
+'''
+sockutil_fname = path.join(dirname, 'SockUtilSendRequests.cs')
+print 'write to', sockutil_fname
+with open(sockutil_fname, 'w') as f:
+    text = sockutil_template % '\n'.join(sockutil_items)
+    f.write(text)
+
 print 'generate python class for message(request/response)'
 lines = []
-lines.append('import server')
+lines.append('import sockutil')
 lines.append('')
 lines.append('')
 for k, v in type_map.iteritems():
@@ -627,4 +811,14 @@ for k, v in type_map.iteritems():
 with open('message.py', 'w') as f:
     text = '\n'.join(lines)
     f.write(text)
+
+
+print 'generate c# errno'
+create_csharp_errno(errno, path.join(dirname, 'Errno.cs'))
+
+print 'generate python errno'
+create_python_errno(errno, 'servererrno.py')
+
+
+
 print 'done'

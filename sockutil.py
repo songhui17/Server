@@ -74,6 +74,8 @@ class SockUtil:
     callback_map = {}
     errorcallack_map = {}
     handler_map = {}
+    # object_map = {}
+
     request_id = 1
 
     def __init__(self):
@@ -199,7 +201,7 @@ class SockUtil:
         length = strtob128(payload[0:2])
         return payload[2 + length:]
 
-    def recv_message(self, sock, payload):
+    def recv_message(self, sock, payload, obj=None):
         """recv_message
         Exception:
 
@@ -246,10 +248,30 @@ class SockUtil:
                     # TODO: serialize exception/error
                     print '[-] send error:', str(ex)
                     self.send_error(sock, request_id, handler_name, error=str(ex))
-            else:
-                info = '[-] no handler for %s' % handler_name[0:10]
-                print info
-                self.send_error(sock, request_id, handler_name, error=info)
+
+                return
+
+            # object_id = message.get('object_id', None)
+            # obj = self.object_map.get(object_id)
+            if obj is not None:
+                method_name = 'handle_%s' % handler_name
+                method = getattr(obj, method_name)
+                if callable(method):
+                    # TODO: copy from up
+                    try:
+                        ret = method(*args, **kwargs)
+                        if request_id is not None and require_response:
+                            print '[+] send response:', ret
+                            self.send_response(sock, request_id, handler_name, response=ret)
+                    except Exception, ex:
+                        # TODO: serialize exception/error
+                        print '[-] send error:', str(ex)
+                        self.send_error(sock, request_id, handler_name, error=str(ex))
+                return
+
+            info = '[-] no handler for %s' % handler_name[0:10]
+            print info
+            self.send_error(sock, request_id, handler_name, error=info)
 
             # TODO: to instance
         elif msg_type in ['response', 'error']:
@@ -313,6 +335,11 @@ class SockUtil:
             raise ValueError('handle is not a method')
 
         self.handler_map[key] = handler
+
+    # def register_object(self, obj):
+    #     assert obj is not None, 'register_object obj must not None'
+    #     assert not self.object_map.has_key(obj), 'instance_id must be unique'
+    #     self.object_map[obj.instance_id] = obj
 
 
 if __name__ == '__main__':

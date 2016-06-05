@@ -1,378 +1,886 @@
-import server
+import sockutil
 
 
 class CreateActorRequestResponse:
 
-    def __init__(self, *args):
-        self.result = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        result: bool
+        errno: int
+
+        """
+        self.result = kwargs.get('result')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.result = kwargs['result']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['result'] = server.dump(self.result)
-        ret['errno'] = server.dump(self.errno)
+        ret['result'] = sockutil.dump(self.result)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class EnterLevelRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class Level0BotKilledRequest:
 
-    def __init__(self, *args):
+    def __init__(self):
+        pass
+
+    def load(self):
         pass
 
     def dump(self):
-        ret = {}
-        return ret
+        return {}
 
 
 class StartLevelRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class FinishLevelRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class GetLevelInfoRequestResponse:
 
-    def __init__(self, *args):
-        self.level_info = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        level_info: LevelInfo[]
+        errno: int
+
+        """
+        self.level_info = kwargs.get('level_info')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.level_info = kwargs['level_info']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['level_info'] = server.dump(self.level_info)
-        ret['errno'] = server.dump(self.errno)
+        ret['level_info'] = sockutil.dump(self.level_info)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class LeaveLevelRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class SpawnBotRequest:
 
-    def __init__(self, *args):
-        self.bot_id = args[0]
-        self.bot_type = args[1]
-        self.position = args[2]
-        self.rotation = args[3]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        bot_id: int
+        bot_type: str
+        position: Vector3
+        rotation: float
+
+        """
+        self.bot_id = kwargs.get('bot_id')
+        self.bot_type = kwargs.get('bot_type')
+        self.position = kwargs.get('position')
+        self.rotation = kwargs.get('rotation')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.bot_id = kwargs['bot_id']
+        self.bot_type = kwargs['bot_type']
+        self.position = kwargs['position']
+        self.rotation = kwargs['rotation']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['bot_id'] = server.dump(self.bot_id)
-        ret['bot_type'] = server.dump(self.bot_type)
-        ret['position'] = server.dump(self.position)
-        ret['rotation'] = server.dump(self.rotation)
+        ret['bot_id'] = sockutil.dump(self.bot_id)
+        ret['bot_type'] = sockutil.dump(self.bot_type)
+        ret['position'] = sockutil.dump(self.position)
+        ret['rotation'] = sockutil.dump(self.rotation)
         return ret
 
 
 class Vector3:
 
-    def __init__(self, *args):
-        self.x = args[0]
-        self.y = args[1]
-        self.z = args[2]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        x: float
+        y: float
+        z: float
+
+        """
+        self.x = kwargs.get('x')
+        self.y = kwargs.get('y')
+        self.z = kwargs.get('z')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.x = kwargs['x']
+        self.y = kwargs['y']
+        self.z = kwargs['z']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['x'] = server.dump(self.x)
-        ret['y'] = server.dump(self.y)
-        ret['z'] = server.dump(self.z)
+        ret['x'] = sockutil.dump(self.x)
+        ret['y'] = sockutil.dump(self.y)
+        ret['z'] = sockutil.dump(self.z)
         return ret
 
 
 class Actor:
 
-    def __init__(self, *args):
-        self.actor_id = args[0]
-        self.name = args[1]
-        self.level = args[2]
-        self.gold = args[3]
-        self.experience = args[4]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_id: int
+        name: str
+        level: int
+        gold: int
+        experience: int
+
+        """
+        self.actor_id = kwargs.get('actor_id')
+        self.name = kwargs.get('name')
+        self.level = kwargs.get('level')
+        self.gold = kwargs.get('gold')
+        self.experience = kwargs.get('experience')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_id = kwargs['actor_id']
+        self.name = kwargs['name']
+        self.level = kwargs['level']
+        self.gold = kwargs['gold']
+        self.experience = kwargs['experience']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['actor_id'] = server.dump(self.actor_id)
-        ret['name'] = server.dump(self.name)
-        ret['level'] = server.dump(self.level)
-        ret['gold'] = server.dump(self.gold)
-        ret['experience'] = server.dump(self.experience)
+        ret['actor_id'] = sockutil.dump(self.actor_id)
+        ret['name'] = sockutil.dump(self.name)
+        ret['level'] = sockutil.dump(self.level)
+        ret['gold'] = sockutil.dump(self.gold)
+        ret['experience'] = sockutil.dump(self.experience)
         return ret
 
 
 class GetActorInfoRequestResponse:
 
-    def __init__(self, *args):
-        self.actor_info = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_info: Actor
+        errno: int
+
+        """
+        self.actor_info = kwargs.get('actor_info')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_info = kwargs['actor_info']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['actor_info'] = server.dump(self.actor_info)
-        ret['errno'] = server.dump(self.errno)
+        ret['actor_info'] = sockutil.dump(self.actor_info)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class GetActorLevelInfoRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+
+        """
+        self.username = kwargs.get('username')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
+        ret['username'] = sockutil.dump(self.username)
         return ret
 
 
 class LoginRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
-        self.password = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+        password: str
+
+        """
+        self.username = kwargs.get('username')
+        self.password = kwargs.get('password')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
+        self.password = kwargs['password']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
-        ret['password'] = server.dump(self.password)
+        ret['username'] = sockutil.dump(self.username)
+        ret['password'] = sockutil.dump(self.password)
         return ret
 
 
 class LevelInfo:
 
-    def __init__(self, *args):
-        self.level_id = args[0]
-        self.title = args[1]
-        self.task1 = args[2]
-        self.task2 = args[3]
-        self.task3 = args[4]
-        self.bonuses = args[5]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        level_id: int
+        title: str
+        task1: str
+        task2: str
+        task3: str
+        bonuses: str[]
+
+        """
+        self.level_id = kwargs.get('level_id')
+        self.title = kwargs.get('title')
+        self.task1 = kwargs.get('task1')
+        self.task2 = kwargs.get('task2')
+        self.task3 = kwargs.get('task3')
+        self.bonuses = kwargs.get('bonuses')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.level_id = kwargs['level_id']
+        self.title = kwargs['title']
+        self.task1 = kwargs['task1']
+        self.task2 = kwargs['task2']
+        self.task3 = kwargs['task3']
+        self.bonuses = kwargs['bonuses']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['level_id'] = server.dump(self.level_id)
-        ret['title'] = server.dump(self.title)
-        ret['task1'] = server.dump(self.task1)
-        ret['task2'] = server.dump(self.task2)
-        ret['task3'] = server.dump(self.task3)
-        ret['bonuses'] = server.dump(self.bonuses)
+        ret['level_id'] = sockutil.dump(self.level_id)
+        ret['title'] = sockutil.dump(self.title)
+        ret['task1'] = sockutil.dump(self.task1)
+        ret['task2'] = sockutil.dump(self.task2)
+        ret['task3'] = sockutil.dump(self.task3)
+        ret['bonuses'] = sockutil.dump(self.bonuses)
         return ret
 
 
 class GetAccountInfoRequestResponse:
 
-    def __init__(self, *args):
-        self.account_info = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        account_info: Account
+        errno: int
+
+        """
+        self.account_info = kwargs.get('account_info')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.account_info = kwargs['account_info']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['account_info'] = server.dump(self.account_info)
-        ret['errno'] = server.dump(self.errno)
+        ret['account_info'] = sockutil.dump(self.account_info)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class GetActorLevelInfoRequestResponse:
 
-    def __init__(self, *args):
-        self.actor_level_info = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_level_info: ActorLevelInfo[]
+        errno: int
+
+        """
+        self.actor_level_info = kwargs.get('actor_level_info')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_level_info = kwargs['actor_level_info']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['actor_level_info'] = server.dump(self.actor_level_info)
-        ret['errno'] = server.dump(self.errno)
+        ret['actor_level_info'] = sockutil.dump(self.actor_level_info)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class ActorLevelInfo:
 
-    def __init__(self, *args):
-        self.actor_id = args[0]
-        self.level_id = args[1]
-        self.passed = args[2]
-        self.star1 = args[3]
-        self.star2 = args[4]
-        self.star3 = args[5]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_id: int
+        level_id: int
+        passed: bool
+        star1: bool
+        star2: bool
+        star3: bool
+
+        """
+        self.actor_id = kwargs.get('actor_id')
+        self.level_id = kwargs.get('level_id')
+        self.passed = kwargs.get('passed')
+        self.star1 = kwargs.get('star1')
+        self.star2 = kwargs.get('star2')
+        self.star3 = kwargs.get('star3')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_id = kwargs['actor_id']
+        self.level_id = kwargs['level_id']
+        self.passed = kwargs['passed']
+        self.star1 = kwargs['star1']
+        self.star2 = kwargs['star2']
+        self.star3 = kwargs['star3']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['actor_id'] = server.dump(self.actor_id)
-        ret['level_id'] = server.dump(self.level_id)
-        ret['passed'] = server.dump(self.passed)
-        ret['star1'] = server.dump(self.star1)
-        ret['star2'] = server.dump(self.star2)
-        ret['star3'] = server.dump(self.star3)
+        ret['actor_id'] = sockutil.dump(self.actor_id)
+        ret['level_id'] = sockutil.dump(self.level_id)
+        ret['passed'] = sockutil.dump(self.passed)
+        ret['star1'] = sockutil.dump(self.star1)
+        ret['star2'] = sockutil.dump(self.star2)
+        ret['star3'] = sockutil.dump(self.star3)
         return ret
 
 
 class Level0BotKilledRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class Account:
 
-    def __init__(self, *args):
-        self.name = args[0]
-        self.actor_id = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        name: str
+        actor_id: int
+
+        """
+        self.name = kwargs.get('name')
+        self.actor_id = kwargs.get('actor_id')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.name = kwargs['name']
+        self.actor_id = kwargs['actor_id']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['name'] = server.dump(self.name)
-        ret['actor_id'] = server.dump(self.actor_id)
+        ret['name'] = sockutil.dump(self.name)
+        ret['actor_id'] = sockutil.dump(self.actor_id)
         return ret
 
 
 class EnterLevelRequest:
 
-    def __init__(self, *args):
+    def __init__(self):
+        pass
+
+    def load(self):
         pass
 
     def dump(self):
-        ret = {}
-        return ret
+        return {}
 
 
 class FinishLevelRequest:
 
-    def __init__(self, *args):
-        self.win = args[0]
-        self.bonuses = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        win: bool
+        bonuses: str[]
+
+        """
+        self.win = kwargs.get('win')
+        self.bonuses = kwargs.get('bonuses')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.win = kwargs['win']
+        self.bonuses = kwargs['bonuses']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['win'] = server.dump(self.win)
-        ret['bonuses'] = server.dump(self.bonuses)
+        ret['win'] = sockutil.dump(self.win)
+        ret['bonuses'] = sockutil.dump(self.bonuses)
         return ret
 
 
 class GetAccountInfoRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+
+        """
+        self.username = kwargs.get('username')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
+        ret['username'] = sockutil.dump(self.username)
         return ret
 
 
 class GetLevelInfoRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+
+        """
+        self.username = kwargs.get('username')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
+        ret['username'] = sockutil.dump(self.username)
         return ret
 
 
 class CreateActorRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
-        self.actor_type = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+        actor_type: str
+
+        """
+        self.username = kwargs.get('username')
+        self.actor_type = kwargs.get('actor_type')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
+        self.actor_type = kwargs['actor_type']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
-        ret['actor_type'] = server.dump(self.actor_type)
+        ret['username'] = sockutil.dump(self.username)
+        ret['actor_type'] = sockutil.dump(self.actor_type)
         return ret
 
 
 class SpawnBotRequestResponse:
 
-    def __init__(self, *args):
-        self.errno = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        errno: int
+
+        """
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['errno'] = server.dump(self.errno)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 
 
 class LeaveLevelRequest:
 
-    def __init__(self, *args):
+    def __init__(self):
+        pass
+
+    def load(self):
         pass
 
     def dump(self):
-        ret = {}
-        return ret
+        return {}
 
 
 class GetActorInfoRequest:
 
-    def __init__(self, *args):
-        self.username = args[0]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        username: str
+
+        """
+        self.username = kwargs.get('username')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.username = kwargs['username']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['username'] = server.dump(self.username)
+        ret['username'] = sockutil.dump(self.username)
         return ret
 
 
 class StartLevelRequest:
 
-    def __init__(self, *args):
-        self.actor_id = args[0]
-        self.level_id = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_id: int
+        level_id: int
+
+        """
+        self.actor_id = kwargs.get('actor_id')
+        self.level_id = kwargs.get('level_id')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_id = kwargs['actor_id']
+        self.level_id = kwargs['level_id']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['actor_id'] = server.dump(self.actor_id)
-        ret['level_id'] = server.dump(self.level_id)
+        ret['actor_id'] = sockutil.dump(self.actor_id)
+        ret['level_id'] = sockutil.dump(self.level_id)
         return ret
 
 
 class LoginRequestResponse:
 
-    def __init__(self, *args):
-        self.result = args[0]
-        self.errno = args[1]
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        result: bool
+        errno: int
+
+        """
+        self.result = kwargs.get('result')
+        self.errno = kwargs.get('errno')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.result = kwargs['result']
+        self.errno = kwargs['errno']
 
     def dump(self):
+        """dump -> dict
+        """
         ret = {}
-        ret['result'] = server.dump(self.result)
-        ret['errno'] = server.dump(self.errno)
+        ret['result'] = sockutil.dump(self.result)
+        ret['errno'] = sockutil.dump(self.errno)
         return ret
 

@@ -39,7 +39,7 @@ class Handler:
             print '[-] on_login failed, errno:', errno
             self.state = STATE_DONE
 
-    def on_login_error(self, sock, error):
+    def on_login_error(self, sock, error, request_id):
         print '[-] on_login_error:', error
         self.state = STATE_DONE
 
@@ -58,7 +58,7 @@ class Handler:
         else:
             self._remote(sock, 'get_actor_info', username=u'主宰')
 
-    def on_get_account_info_error(self, sock, error):
+    def on_get_account_info_error(self, sock, error, request_id):
         print '[-] on_get_account_info:', error
         self.state = STATE_DONE
 
@@ -72,7 +72,7 @@ class Handler:
             print '[-] on_create_actor failed, errno:', errno
             self.state = STATE_DONE
 
-    def on_create_actor_error(self, sock, error):
+    def on_create_actor_error(self, sock, error, request_id):
         print '[-] on_create_actor_error:', error
         self.state = STATE_DONE
 
@@ -89,7 +89,7 @@ class Handler:
             print '[-] on_get_actor_info failed'
             self.state = STATE_DONE
 
-    def on_get_actor_info_error(self, sock, error):
+    def on_get_actor_info_error(self, sock, error, request_id):
         print '[-] on_get_actor_info_error'
         self.state = STATE_DONE
 
@@ -108,7 +108,7 @@ class Handler:
             print '[-] on_get_actor_level_info failed, errno:', errno
             self.state = STATE_DONE
 
-    def on_get_actor_level_info_error(self, sock, error):
+    def on_get_actor_level_info_error(self, sock, error, request_id):
         print '[-] on_get_actor_info_error'
         self.state = STATE_DONE
 
@@ -122,7 +122,7 @@ class Handler:
         else:
             print '[-] on_get_level_info failed, errno:', errno
             self.state = STATE_DONE
-    def on_get_level_info_error(self, sock, error):
+    def on_get_level_info_error(self, sock, error, request_id):
         print '[-] on_get_level_info_error'
         self.state = STATE_DONE
 
