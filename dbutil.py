@@ -63,6 +63,8 @@ def validate_password(password_):
     Exception: password_(len=11) is too short or long
 
     """
+    return True
+
     if password_ is None:
         raise Exception('password_ is None')
     if not (0 < len(password_) < 11):
@@ -129,10 +131,18 @@ def login(userdb_, username_, password_):
     return True, E_OK
 
 
-def update_actor(actordb_, actor):
+def actor_update(actordb, actor):
     """update
     """
-    actordb_[actor.actor_id] = actor
+    print '[+] update actrodb'
+    actordb[actor.actor_id] = actor.dump()
+
+
+def actor_level_info_update(actorleveldb, info):
+    """update -> actorleveldb
+    """
+    print '[+] update actorlveldb'
+    actorleveldb[(info.actor_id, info.level_id)] = info.dump()
 
 if __name__ == '__main__':
     import doctest

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import json
+import traceback
 
 __all__ = ['b128tostr', 'strtob128', 'SockUtil', 'dump']
 
@@ -121,7 +122,7 @@ class SockUtil:
         message = '%s%s%s%s' % (b128tostr(total_length),
                                 b128tostr(len(handler)),
                                 handler, payload)
-        print '[+] send_message len(payload):', len(payload), 'message:', message
+        # print '[+] send_message len(payload):', len(payload), 'message:', message
         sock.sendall(message)
 
     def send_request(self, sock, method, **request):  #*args, **kwargs):
@@ -220,7 +221,7 @@ class SockUtil:
             print '[-] failed to parse response', payload
             raise
 
-        print '[+] recv', message
+        # print '[+] recv', message
         msg_type = message.get('type', None)
         if msg_type is None:
             print '[-] implementation error: message type is not specified'
@@ -247,6 +248,7 @@ class SockUtil:
                 except Exception, ex:
                     # TODO: serialize exception/error
                     print '[-] send error:', str(ex)
+                    traceback.print_exc()
                     self.send_error(sock, request_id, handler_name, error=str(ex))
 
                 return
@@ -266,6 +268,7 @@ class SockUtil:
                     except Exception, ex:
                         # TODO: serialize exception/error
                         print '[-] send error:', str(ex)
+                        traceback.print_exc()
                         self.send_error(sock, request_id, handler_name, error=str(ex))
                 return
 
@@ -296,8 +299,10 @@ class SockUtil:
                             callback(sock, response, request_id=request_id)
                     except Exception, ex:
                         print '[-] failed to callback', ex
+                        traceback.print_exc()
                     except:
                         print '[-] failed to callback'
+                        traceback.print_exc()
                 else:
                     print '[-] no callback for request_id:', request_id
 
@@ -310,8 +315,10 @@ class SockUtil:
                             errorcallback(sock, error, request_id)
                     except Exception, ex:
                         print '[-] failed to callback', ex
+                        traceback.print_exc()
                     except:
                         print '[-] failed to callback'
+                        traceback.print_exc()
                 else:
                     print '[-] no errorcallback for request_id:', request_id
                     # TODO: drop current connection/socket

@@ -3,6 +3,8 @@ import time
 import message
 
 import server
+import dbutil
+from servererrno import *
 
 # TODO
 def _remote(obj, method, *args, **kwargs):
@@ -45,9 +47,16 @@ class ShootGameLevel0:
         # TODO
         self.sockutil.register_handler(
             'level0_bot_killed', self.handle_level0_bot_killed, force=True);
+        self.sockutil.register_handler(
+            'update_actor_hp', self.handle_update_actor_hp, force=True);
 
-    def handle_level0_bot_killed(self):
+    def handle_level0_bot_killed(self, bot_id):
         print '[+] kill'
+        if bot_id == -2:  # player
+            _remote(self, 'finish_level', win=False)
+            self.finished = True
+            return
+
         self.killed += 1
         if self.killed == self.max_bot_count:
             print '[+] finish level0 bot_count=%d, max_bot_count=%d'\
@@ -55,18 +64,39 @@ class ShootGameLevel0:
 
             self.update_actor_info()
 
-            _remote(self, 'finish_level')
+            _remote(self, 'finish_level', win=True)
             self.finished = True
         else:
             spot = self.spawn_spot[self.bot_count]
             self._spawn_bot('spider', x=spot[0], y=spot[1],
                             z=spot[2], rot_y=spot[3])
 
+    def _clamp(self, value, min, max):
+        assert min <= max
+        if value < min:
+            value = min
+        if value > max:
+            value = max
+        return value
+
+    def handle_update_actor_hp(self, actor_id, hp, max_ammo, ammo):
+        # if self.actor.actor_id != actor_id:
+        #     return message.UpdateActorHpRequestResponse(errno=E_INVALID
+        if hp <= 0:  # never dead
+            hp = 10
+        if max_ammo <= 0:
+            max_ammo = 18
+
+        self.actor.hp = self._clamp(hp, 0, self.actor.max_hp)
+        self.actor.max_ammo = self._clamp(max_ammo, 0, 4096)
+        self.actor.ammo = self._clamp(ammo, 0, 18)  #TODO: magic number
+        dbutil.actor_update(self.connection.actordb, self.actor)
+        return message.UpdateActorHpRequestResponse(errno=E_OK)
 
     def start(self, *args, **kwargs):
         print 'ShootGame start'
         self.level_id = kwargs.get('level_id', 0)
-        _remote(self, 'start_level', actor_id=0, level_id=0)
+        _remote(self, 'start_level', actor_id=0, level_id=self.level_id)
     
     def handle_enter_level(self):
         self.entered = True
@@ -91,18 +121,22 @@ class ShootGameLevel0:
         self.actor.experience += 1000
         self.actor.gold += 100
         self.actor.level += 1
-        self.actor.actordb = self.connection.actordb
-        self.actor.update()
+        # self.actor.actordb = self.connection.actordb
+        # self.actor.update()
+        dbutil.actor_update(self.connection.actordb, self.actor)
 
-        actor_level_info = server.ActorLevelInfo()
+        actor_level_info = message.ActorLevelInfo()
         actor_level_info.actor_id = self.actor.actor_id
         actor_level_info.level_id = self.level.level_id
         actor_level_info.passed = True
         actor_level_info.star1 = True
         actor_level_info.star2= True
         actor_level_info.star3= True
-        actor_level_info.actorleveldb = self.connection.actorleveldb
-        actor_level_info.update()
+        # actor_level_info.actorleveldb = self.connection.actorleveldb
+        # actor_level_info.update()
+        dbutil.actor_level_info_update(
+            self.connection.actorleveldb,
+            actor_level_info)
 
     def _spawn_bot(self, bot_type,
                    x=0, y=0, z=0, rot_y=0):

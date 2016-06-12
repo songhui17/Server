@@ -74,143 +74,163 @@ class Account:
         return ret
 
 
-class ActorLevelInfo:
-    """ActorLevelInfo: Per Actor level stat
-    Fields:
+# class ActorLevelInfo:
+#     """ActorLevelInfo: Per Actor level stat
+#     Fields:
+# 
+#     actor_id    :int
+# 
+#     level_id    :int
+#     passed      :bool
+#     star1      :bool
+#     star2      :bool
+#     star3      :bool
+#     """
+# 
+#     actorleveldb = None
+# 
+#     def __init__(self):
+#         pass
+# 
+#     def _copy(self, copy):
+#         self.actor_id = copy.actor_id
+#         self.level_id = copy.level_id
+#         self.passed = copy.passed
+#         self.star1 = copy.star1
+#         self.star2 = copy.star2
+#         self.star3 = copy.star3
+# 
+#     def load(self, data):
+#         """load :from data
+# 
+#         Exception:
+# 
+#         KeyError
+#         """
+#         try:
+#             # import pdb; pdb.set_trace()
+#             tmp = ActorLevelInfo()
+#             tmp.actor_id = data.get('actor_id')
+#             tmp.level_id = data.get('level_id')
+#             tmp.passed = data.get('passed')
+#             tmp.star1 = data.get('star1')
+#             tmp.star2 = data.get('star2')
+#             tmp.star3 = data.get('star3')
+# 
+#             self._copy(tmp)
+#         except KeyError, ex:
+#             print '[-]', ex
+#             raise ex
+# 
+#     def dump(self):
+#         """dump -> dict{actor_id, level_id, passed, star1, star2, star3}
+#         """
+#         ret = {}
+#         ret['actor_id'] = self.actor_id
+#         ret['level_id'] = self.level_id
+#         ret['passed'] = self.passed
+#         ret['star1'] = self.star1
+#         ret['star2'] = self.star2
+#         ret['star3'] = self.star3
+#         return ret
+# 
+#     def update(self):
+#         """update -> actorleveldb
+#         """
+#         assert self.actorleveldb is not None
+#         print '[+] update actorlveldb'
+#         record = self.actorleveldb.get((self.actor_id, self.level_id))
+#         self.actorleveldb[(self.actor_id, self.level_id)] = self.dump()
 
-    actor_id    :int
 
-    level_id    :int
-    passed      :bool
-    star1      :bool
-    star2      :bool
-    star3      :bool
-    """
-
-    actorleveldb = None
-
-    def __init__(self):
-        pass
-
-    def _copy(self, copy):
-        self.actor_id = copy.actor_id
-        self.level_id = copy.level_id
-        self.passed = copy.passed
-        self.star1 = copy.star1
-        self.star2 = copy.star2
-        self.star3 = copy.star3
-
-    def load(self, data):
-        """load :from data
-
-        Exception:
-
-        KeyError
-        """
-        try:
-            # import pdb; pdb.set_trace()
-            tmp = ActorLevelInfo()
-            tmp.actor_id = data.get('actor_id')
-            tmp.level_id = data.get('level_id')
-            tmp.passed = data.get('passed')
-            tmp.star1 = data.get('star1')
-            tmp.star2 = data.get('star2')
-            tmp.star3 = data.get('star3')
-
-            self._copy(tmp)
-        except KeyError, ex:
-            print '[-]', ex
-            raise ex
-
-    def dump(self):
-        """dump -> dict{actor_id, level_id, passed, star1, star2, star3}
-        """
-        ret = {}
-        ret['actor_id'] = self.actor_id
-        ret['level_id'] = self.level_id
-        ret['passed'] = self.passed
-        ret['star1'] = self.star1
-        ret['star2'] = self.star2
-        ret['star3'] = self.star3
-        return ret
-
-    def update(self):
-        """update -> actorleveldb
-        """
-        assert self.actorleveldb is not None
-        print '[+] update actorlveldb'
-        record = self.actorleveldb.get((self.actor_id, self.level_id))
-        self.actorleveldb[(self.actor_id, self.level_id)] = self.dump()
-
-
-class Actor:
-    """Actor:
-    Fields
-
-    account     :Account (back ref)
-
-    actor_id    :int
-    name        :int
-    level       :int
-    gold        :int
-    experience  :int
-
-    """
-
-    actordb = None
-
-    def __init__(self):
-        self.actor_id = 0
-        self.name = ''
-        self.level = 0
-        self.gold = 0
-        self.experience = 0
-
-    def __str__(self):
-        info = ''
-        info += 'actor_id: {0}\n'.format(self.actor_id)
-        info += 'name: {0}\n'.format(self.name)
-        info += 'level: {0}\n'.format(self.level)
-        info += 'gold: {0}\n'.format(self.gold)
-        info += 'experience: {0}\n'.format(self.experience)
-        return info
-
-    def _copy(self, copy):
-        self.actor_id = copy.actor_id
-        self.name = copy.name
-        self.level = copy.level
-        self.gold = copy.gold
-        self.experience = copy.experience
-
-    def load(self, data):
-        try:
-            tmp = Actor()
-            tmp.actor_id = data.get('actor_id')
-            tmp.name = data.get('name')
-            tmp.level = data.get('level')
-            tmp.gold = data.get('gold')
-            tmp.experience = data.get('experience')
-
-            self._copy(tmp)
-        except KeyError, ex:
-            print '[-] Failed to load: ', ex
-            raise ex
-
-    def dump(self):
-        ret = {}
-        ret['actor_id'] = self.actor_id
-        ret['name'] = self.name
-        ret['level'] = self.level
-        ret['gold'] = self.gold
-        ret['experience'] = self.experience
-        return ret
-
-    def update(self):
-        """update -> actordb
-        """
-        print '[+] update actrodb'
-        assert self.actordb is not None
-        self.actordb[self.actor_id] = self.dump()
+# class Actor:
+#     """Actor:
+#     Fields
+# 
+#     account     :Account (back ref)
+# 
+#     actor_id    :int
+#     name        :int
+#     level       :int
+#     gold        :int
+#     experience  :int
+# 
+#     """
+# 
+#     actordb = None
+# 
+#     def __init__(self):
+#         """
+#         Params:
+# 
+#         actor_id: int
+#         name: str
+#         level: int
+#         gold: int
+#         experience: int
+#         max_hp: int
+#         hp: int
+#         max_ammo: int
+#         ammo: int
+# 
+#         """
+#         self.actor_id = kwargs.get('actor_id')
+#         self.name = kwargs.get('name')
+#         self.level = kwargs.get('level')
+#         self.gold = kwargs.get('gold')
+#         self.experience = kwargs.get('experience')
+#         self.max_hp = kwargs.get('max_hp')
+#         self.hp = kwargs.get('hp')
+#         self.max_ammo = kwargs.get('max_ammo')
+#         self.ammo = kwargs.get('ammo')
+# 
+#     def __str__(self):
+#         info = ''
+#         info += 'actor_id: {0}\n'.format(self.actor_id)
+#         info += 'name: {0}\n'.format(self.name)
+#         info += 'level: {0}\n'.format(self.level)
+#         info += 'gold: {0}\n'.format(self.gold)
+#         info += 'experience: {0}\n'.format(self.experience)
+#         return info
+# 
+#     def load(self, data):
+#         """load from dict
+#         Exception:
+# 
+#         KeyError
+# 
+#         """
+#         self.actor_id = kwargs['actor_id']
+#         self.name = kwargs['name']
+#         self.level = kwargs['level']
+#         self.gold = kwargs['gold']
+#         self.experience = kwargs['experience']
+#         self.max_hp = kwargs['max_hp']
+#         self.hp = kwargs['hp']
+#         self.max_ammo = kwargs['max_ammo']
+#         self.ammo = kwargs['ammo']
+# 
+#     def dump(self):
+#         """dump -> dict
+#         """
+#         ret = {}
+#         ret['actor_id'] = sockutil.dump(self.actor_id)
+#         ret['name'] = sockutil.dump(self.name)
+#         ret['level'] = sockutil.dump(self.level)
+#         ret['gold'] = sockutil.dump(self.gold)
+#         ret['experience'] = sockutil.dump(self.experience)
+#         ret['max_hp'] = sockutil.dump(self.max_hp)
+#         ret['hp'] = sockutil.dump(self.hp)
+#         ret['max_ammo'] = sockutil.dump(self.max_ammo)
+#         ret['ammo'] = sockutil.dump(self.ammo)
+#         return ret
+# 
+#     def update(self):
+#         """update -> actordb
+#         """
+#         print '[+] update actrodb'
+#         assert self.actordb is not None
+#         self.actordb[self.actor_id] = self.dump()
 
 
 class Connection:
@@ -247,6 +267,7 @@ class Connection:
 
         if self.shoot_game:
             self.shoot_game.destroy()
+            self.shoot_game = None
 
     def on_remote_close(self):
         print '[+] close socket'
@@ -258,6 +279,7 @@ class Connection:
 
         if self.shoot_game:
             self.shoot_game.destroy()
+            self.shoot_game = None
 
     def recv_data(self, data):
         print '[+] connection:%d, recv_data:%s' % (self.instance_id, data)
@@ -278,7 +300,7 @@ class Connection:
                     raise Exception('fatal error')
                 if msg_length > len(self.buf) - self.index:
                     # not ready
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     print '[-] not ready msg_length:', msg_length
                     self.index = prev_index
                     break
@@ -343,8 +365,8 @@ class Connection:
                 info = 'Fatal error: actor_id: {0} doesnt exist in'\
                     ' database'.format(account.actor_id)
                 raise Exception(info)
-            actor = Actor()
-            actor.load(actor_data)
+            actor = message.Actor()
+            actor.load(**actor_data)
             actormap_[actor.actor_id] = actor
 
             self.actor = actor
@@ -399,8 +421,8 @@ class Connection:
                     info = 'Fatal error: actor_id: {0} doesnt exist in'\
                         ' database'.format(account.actor_id)
                     raise Exception(info)
-                actor = Actor()
-                actor.load(actor_data)
+                actor = message.Actor()
+                actor.load(**actor_data)
                 actormap[actor_id, actor]
             # import pdb; pdb.set_trace()
             return message.GetActorInfoRequestResponse(
@@ -487,13 +509,17 @@ class Connection:
         if account.actor_id != -1:
             return message.CreateActorRequestResponse(result=False, errno=E_ACTOR_EXIST)
 
-        actor = Actor()
+        actor = message.Actor()
         actor.actor_id = self.server.actor_id;
         self.server.actor_id += 1
         actor.name = actor_type
         actor.level = 1
         actor.gold = 1000
-        actor.experience = 1000
+        actor.experience = 100
+        actor.max_hp = 1000
+        actor.hp = actor.max_hp
+        actor.max_ammo = 1800
+        actor.ammo = 0
 
         if actor.actor_id in actordb:
             info = 'actor_id: {0} conflict for {1}'.format(
@@ -550,8 +576,8 @@ class Connection:
                 info = 'Fatal error: actor_id: {0} doesnt exist in'\
                     ' database'.format(account.actor_id)
                 raise Exception(info)
-            actor = Actor()
-            actor.load(actor_data)
+            actor = message.Actor()
+            actor.load(**actor_data)
             actormap[actor_id, actor]
 
         level_data = [v for k, v in actorleveldb.iteritems() if k[0] == actor_id]
@@ -608,6 +634,7 @@ class Connection:
             raise NotImplementedError('ShootGame is running')
 
         import game
+        # level_id = 1
         level = self.leveldb[level_id]
         if level is None:
             return message.StartLevelRequestResponse(errno=E_NO_SUCH_LEVEL)
@@ -753,9 +780,9 @@ class Server:
         leveldb[1] = {
             'level_id': 1,
             'title': '小试牛刀',
-            'task1': '完成1次双杀',
-            'task2': '击败隐藏僵尸',
-            'task3': '血量不少于50%',
+            'task1': '完成1次三杀',
+            'task2': '击败育母蜘蛛',
+            'task3': '基地血量不少于50%',
             'bonuses': [u'1000金币', u'1000经验', u'随机金币', u'随机经验']
         }
 
@@ -859,7 +886,7 @@ class Server:
                     print '[-] ex:%s, delect conneciton' % ex
                     self._del_connection(self.read_socks[read_sock])
 
-        time.sleep(0.05)
+        time.sleep(0.02)
 
     def main(self, args):
         """main flow ([+] are requests)
@@ -882,8 +909,10 @@ class Server:
         print '======== mini Shoot Server ========'
         print '[+] init account database'
         self.accountdb = {}
-        dbutil.create_account(self.accountdb, 'abc', 'abc')
-        dbutil.create_account(self.accountdb, u'主宰', 'abc')
+        dbutil.create_account(self.accountdb, 'netease1', '123456')
+        dbutil.create_account(self.accountdb, 'netease2', '123456')
+        dbutil.create_account(self.accountdb, 'netease3', '123456')
+        dbutil.create_account(self.accountdb, u'主宰', '123456')
         self.accountmap = {}
 
         print '[+] init actor database'
@@ -940,6 +969,8 @@ class Server:
                         v.update()
                     except:
                         print '[-] error:', (k, v)
+                        import traceback
+                        traceback.print_exc()
                         error_connections.append(k)
 
                 for k in error_connections:

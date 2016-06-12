@@ -142,6 +142,22 @@ type_map = {
                 'name': 'experience',
                 'type': 'int'
             },
+            {
+                'name': 'max_hp',
+                'type': 'int'
+            },
+            {
+                'name': 'hp',
+                'type': 'int'
+            },
+            {
+                'name': 'max_ammo',
+                'type': 'int'
+            },
+            {
+                'name': 'ammo',
+                'type': 'int'
+            },
         ]
     },
 
@@ -395,6 +411,10 @@ type_map = {
     'level0_bot_killed_request': {
         'name': 'level0_bot_killed_request',
         'fields': [
+            {
+                'name': 'bot_id',
+                'type': 'int'
+            }
         ]
     },
     'level0_bot_killed_request_response': {
@@ -404,6 +424,144 @@ type_map = {
                 'name': 'errno',
                 'type': 'int'
             }
+        ]
+    },
+    'bot_transform_sync_request': {
+        'name': 'bot_transform_sync_request',
+        'fields': [
+            {
+                'name': 'bot_id',
+                'type': 'int'
+            },
+            {
+                'name': 'position',
+                'type': 'vector3'
+            },
+            {
+                'name': 'rotation',
+                'type': 'float'
+            },
+            {
+                'name': 'waypoint_position',
+                'type': 'vector3'
+            }
+        ]
+    },
+    'bot_transform_sync_request_response': {
+        'name': 'bot_transform_sync_request_response',
+        'fields': [
+        ]
+    },
+    'bot_explose_request': {
+        'name': 'bot_explose_request',
+        'fields': [
+            {
+                'name': 'bot_id',
+                'type': 'int'
+            }
+        ]
+    },
+    'bot_explose_request_response': {
+        'name': 'bot_explose_request_response',
+        'fields': [
+        ]
+    },
+    'bot_play_animation_request': {
+        'name': 'bot_play_animation_request',
+        'fields': [
+            {
+                'name': 'bot_id',
+                'type': 'int'
+            },
+            {
+                'name': 'animation_clip',
+                'type': 'string'
+            }
+        ]
+    },
+    'bot_play_animation_request_response': {
+        'name': 'bot_play_animation_request_response',
+        'fields': [
+        ]
+    },
+    'tower_hp_sync_request': {
+        'name': 'tower_hp_sync_request',
+        'fields': [
+            {
+                'name': 'tower_id',
+                'type': 'int'
+            },
+            {
+                'name': 'hp',
+                'type': 'int'
+            }
+        ]
+    },
+    'tower_hp_sync_request_response': {
+        'name': 'tower_hp_sync_request_response',
+        'fields': [
+        ]
+    },
+    'update_actor_hp_request': {
+        'name': 'update_actor_hp_request',
+        'fields': [
+            {
+                'name': 'actor_id',
+                'type': 'int'
+            },
+            {
+                'name': 'hp',
+                'type': 'int'
+            },
+            {
+                'name': 'max_ammo',
+                'type': 'int'
+            },
+            {
+                'name': 'ammo',
+                'type': 'int'
+            }
+        ]
+    },
+    'update_actor_hp_request_response': {
+        'name': 'update_actor_hp_request_response',
+        'fields': [
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
+    'spawn_item_request': {
+        'name': 'spawn_item_request',
+        'fields': [
+            {
+                'name': 'item_type',
+                'type': 'string'
+            },
+            {
+                'name': 'position',
+                'type': 'vector3'
+            }
+        ]
+    },
+    'spawn_item_request_response': {
+        'name': 'spawn_item_request_response',
+        'fields': [
+        ]
+    },
+    'use_item_request': {
+        'name': 'use_item_request',
+        'fields': [
+            {
+                'name': 'item_type',
+                'type': 'string'
+            },
+        ]
+    },
+    'use_item_request_response': {
+        'name': 'use_item_request_response',
+        'fields': [
         ]
     }
 }

@@ -46,7 +46,7 @@ class ShootGame:
 
     def start(self):
         print '[+] start level_info.level_id', self.level_info.level_id
-        self.level.start()
+        self.level.start(level_id=self.level_info.level_id)
 
     def update(self):
         self.level.update()
