@@ -160,7 +160,6 @@ type_map = {
             },
         ]
     },
-
     'get_actor_info_request': {
         'name': 'get_actor_info_request',
         'fields': [
@@ -184,7 +183,19 @@ type_map = {
             }
         ]
     },
-
+    'get_actor_level_info_request_response': {
+        'name': 'get_actor_level_info_request_response',
+        'fields': [
+            {
+                'name': 'actor_level_info',
+                'type': 'list actor_level_info'
+            },
+            {
+                'name': 'errno',
+                'type': 'int'
+            }
+        ]
+    },
     'get_actor_level_info_request': {
         'name': 'get_actor_level_info_request',
         'fields': [
@@ -194,7 +205,6 @@ type_map = {
             },
         ]
     },
-
     'actor_level_info': {
         'name': 'actor_level_info',
         'fields': [
@@ -224,18 +234,18 @@ type_map = {
              },
         ]
     },
-
-    'get_actor_level_info_request_response': {
-        'name': 'get_actor_level_info_request_response',
+    'actor_level_info_sync_request': {
+        'name': 'actor_level_info_sync_request',
         'fields': [
             {
                 'name': 'actor_level_info',
-                'type': 'list actor_level_info'
-            },
-            {
-                'name': 'errno',
-                'type': 'int'
+                'type': 'actor_level_info'
             }
+        ]
+    },
+    'actor_level_info_sync_request_response': {
+        'name': 'actor_level_info_sync_request_response',
+        'fields': [
         ]
     },
     'get_level_info_request': {
@@ -494,6 +504,10 @@ type_map = {
             {
                 'name': 'hp',
                 'type': 'int'
+            },
+            {
+                'name': 'max_hp',
+                'type': 'int'
             }
         ]
     },
@@ -561,6 +575,37 @@ type_map = {
     },
     'use_item_request_response': {
         'name': 'use_item_request_response',
+        'fields': [
+        ]
+    },
+    'kill_report': {
+        'name': 'kill_report',
+        'fields': [
+            {
+                'name': 'double_kill', 
+                'type': 'int',
+            },
+            {
+                'name': 'triple_kill',
+                'type': 'int'
+            }
+        ]
+    },
+    'kill_report_sync_request': {
+        'name': 'kill_report_sync_request',
+        'fields': [
+            {
+                'name': 'actor_id',
+                'type': 'int'
+            },
+            {
+                'name': 'kill_report',
+                'type': 'kill_report'
+            }
+        ]
+    },
+    'kill_report_sync_request_response': {
+        'name': 'kill_report_sync_request_response',
         'fields': [
         ]
     }

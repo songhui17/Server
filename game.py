@@ -48,8 +48,8 @@ class ShootGame:
         print '[+] start level_info.level_id', self.level_info.level_id
         self.level.start(level_id=self.level_info.level_id)
 
-    def update(self):
-        self.level.update()
+    def update(self, delta_time):
+        self.level.update(delta_time)
 
     def destroy(self):
         if self.level is not None:

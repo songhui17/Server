@@ -133,6 +133,18 @@ class CreateActorRequestResponse:
         return ret
 
 
+class UseItemRequestResponse:
+
+    def __init__(self):
+        pass
+
+    def load(self):
+        pass
+
+    def dump(self):
+        return {}
+
+
 class GetActorLevelInfoRequest:
 
     def __init__(self, **kwargs):
@@ -161,16 +173,36 @@ class GetActorLevelInfoRequest:
         return ret
 
 
-class UseItemRequestResponse:
+class KillReportSyncRequest:
 
-    def __init__(self):
-        pass
+    def __init__(self, **kwargs):
+        """
+        Params:
 
-    def load(self):
-        pass
+        actor_id: int
+        kill_report: KillReport
+
+        """
+        self.actor_id = kwargs.get('actor_id')
+        self.kill_report = kwargs.get('kill_report')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_id = kwargs['actor_id']
+        self.kill_report = kwargs['kill_report']
 
     def dump(self):
-        return {}
+        """dump -> dict
+        """
+        ret = {}
+        ret['actor_id'] = sockutil.dump(self.actor_id)
+        ret['kill_report'] = sockutil.dump(self.kill_report)
+        return ret
 
 
 class GetAccountInfoRequestResponse:
@@ -377,6 +409,18 @@ class Account:
         return ret
 
 
+class KillReportSyncRequestResponse:
+
+    def __init__(self):
+        pass
+
+    def load(self):
+        pass
+
+    def dump(self):
+        return {}
+
+
 class GetAccountInfoRequest:
 
     def __init__(self, **kwargs):
@@ -474,6 +518,34 @@ class CreateActorRequest:
         ret = {}
         ret['username'] = sockutil.dump(self.username)
         ret['actor_type'] = sockutil.dump(self.actor_type)
+        return ret
+
+
+class ActorLevelInfoSyncRequest:
+
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        actor_level_info: ActorLevelInfo
+
+        """
+        self.actor_level_info = kwargs.get('actor_level_info')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.actor_level_info = kwargs['actor_level_info']
+
+    def dump(self):
+        """dump -> dict
+        """
+        ret = {}
+        ret['actor_level_info'] = sockutil.dump(self.actor_level_info)
         return ret
 
 
@@ -1017,6 +1089,38 @@ class SpawnItemRequestResponse:
         return {}
 
 
+class KillReport:
+
+    def __init__(self, **kwargs):
+        """
+        Params:
+
+        double_kill: int
+        triple_kill: int
+
+        """
+        self.double_kill = kwargs.get('double_kill')
+        self.triple_kill = kwargs.get('triple_kill')
+
+    def load(self, **kwargs):
+        """load from dict
+        Exception:
+
+        KeyError
+
+        """
+        self.double_kill = kwargs['double_kill']
+        self.triple_kill = kwargs['triple_kill']
+
+    def dump(self):
+        """dump -> dict
+        """
+        ret = {}
+        ret['double_kill'] = sockutil.dump(self.double_kill)
+        ret['triple_kill'] = sockutil.dump(self.triple_kill)
+        return ret
+
+
 class Level0BotKilledRequestResponse:
 
     def __init__(self, **kwargs):
@@ -1065,10 +1169,12 @@ class TowerHpSyncRequest:
 
         tower_id: int
         hp: int
+        max_hp: int
 
         """
         self.tower_id = kwargs.get('tower_id')
         self.hp = kwargs.get('hp')
+        self.max_hp = kwargs.get('max_hp')
 
     def load(self, **kwargs):
         """load from dict
@@ -1079,6 +1185,7 @@ class TowerHpSyncRequest:
         """
         self.tower_id = kwargs['tower_id']
         self.hp = kwargs['hp']
+        self.max_hp = kwargs['max_hp']
 
     def dump(self):
         """dump -> dict
@@ -1086,6 +1193,7 @@ class TowerHpSyncRequest:
         ret = {}
         ret['tower_id'] = sockutil.dump(self.tower_id)
         ret['hp'] = sockutil.dump(self.hp)
+        ret['max_hp'] = sockutil.dump(self.max_hp)
         return ret
 
 
@@ -1247,4 +1355,16 @@ class GetActorInfoRequest:
         ret = {}
         ret['username'] = sockutil.dump(self.username)
         return ret
+
+
+class ActorLevelInfoSyncRequestResponse:
+
+    def __init__(self):
+        pass
+
+    def load(self):
+        pass
+
+    def dump(self):
+        return {}
 

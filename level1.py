@@ -30,6 +30,10 @@ def v3_distance(start, end):
     return v3_magnitude(v3_minus(start, end))
 
 
+def v3_sqr_distance(start, end):
+    return v3_sqr_magnitude(v3_minus(start, end))
+
+
 def v3_rotate(v3, angle):
     """v3_rotate
     -> (cosT + (- angle), 0, sinT + (- angle))
@@ -151,20 +155,173 @@ def v3_normalize(v3):
 
 
 STATE_IDLE = 0
-STATE_ATTACK = 0
-STATE_GOTO = 1
-STATE_EXPLOSE = 2
+STATE_ATTACK = 1
+STATE_GOTO = 2
+STATE_EXPLOSE = 3
+
+
+class GotoBehavior:
+
+    def __init__(self, bot, tile_map):
+        """
+        Params:
+        bot         :
+        tile_map    :    
+        """
+        self.bot = bot
+        self.tile_map = tile_map
+        self.sqr_wp_stoping_distance = 0.01
+        self.sqr_stoping_distance = 1
+        self.level1 = None
+
+        self.next_position = bot.position
+        self.speed = 1.0  # 4.0
+
+    def _has_waypoint(self):
+        return self.next_position is not None
+
+    def _has_reached(self):
+        to_target = v3_minus(self.bot.position, self.target_position)
+        return v3_sqr_magnitude(to_target) <= self.sqr_stoping_distance
+
+    def set_destination(self, target_position):
+        self.target_position = target_position
+
+    def validate(self):
+        return self.target_position is not None
+
+    def activate(self):
+        self.path = self.tile_map.find_path(
+            self.bot.position, self.target_position)
+        self.next_position = self.path.get_next_waypoint(
+            position=self.bot.position)
+
+    def move_toward(
+            self, delta_time,
+            next_position, sqr_stoping_distance=0.01,
+            stoping_angle=1):
+        """move_toward -> (in_range:T|F, in_angle:T|F), move to next_position
+        """
+        # next_position = self.next_position
+        next_position.y = 0
+        position = self.bot.position
+        position.y = 0
+
+        # import pdb; pdb.set_trace()
+        # TODO
+
+        # delta_time = 0.02
+        # speed = 1.0
+        speed = self.speed
+
+        direction = v3_direction(position, next_position)
+        v3_normalize(direction)
+        movement = v3_multiple(direction, speed * delta_time)
+        new_position = v3_add(position, movement)
+
+        rotate_speed = 100
+        rot_y = self.bot.rotation
+        forward = v3_euler_y(rot_y)
+        angle = v3_angle_cw(forward, direction)
+        in_angle = False
+        if -stoping_angle < angle < stoping_angle:
+            new_rot_y = rot_y + angle
+            self.bot.rotation = new_rot_y
+            in_angle = True
+        else:
+            angle_sign = 1 if angle > 0 else -1
+            target_rot_y = rot_y + angle
+            delta_angle = angle_sign * rotate_speed * delta_time
+            new_rot_y = rot_y + delta_angle
+
+            new_angle = target_rot_y - new_rot_y
+            if (new_angle * angle <= 0
+                    or -stoping_angle < new_angle < stoping_angle):
+                new_rot_y = target_rot_y
+                in_angle = True
+
+            self.bot.rotation = new_rot_y
+
+        # go pass
+        to_next = v3_minus(next_position, position)
+        new_to_next = v3_minus(next_position, new_position)
+
+        self.bot.position = new_position
+
+        # resolve collision
+        if self.level1 is not None:
+            this_bot = self.bot
+            for other in self.level1.bots:
+                if other == this_bot:
+                    continue
+                distance = v3_distance(this_bot.position, other.position)
+                if distance > 1:
+                    continue
+
+                # collision
+                to_other = v3_minus(other.position, this_bot.position)
+                if v3_dot(to_other, direction) < 0:
+                    continue
+
+                if other.get_is_moving():
+                    # push
+                    # print '[+] push'
+                    push_distance = distance - 1
+                    v3_normalize(to_other)
+                    new_position = v3_add(
+                        position, v3_multiple(to_other, push_distance))
+                    this_bot.position = new_position
+
+        if (v3_sqr_magnitude(new_to_next) < sqr_stoping_distance
+                or v3_dot(to_next, new_to_next) <= 0):
+            return True, in_angle
+        else:
+            return False, in_angle
+
+    def update(self, delta_time):
+        if not self._has_waypoint():
+            return
+
+        in_range, in_angle = self.move_toward(
+            delta_time, self.next_position, self.sqr_wp_stoping_distance)
+
+        if in_range:
+            self.next_position = self.path.get_next_waypoint()
+            # if self.next_position is None:
+                # self._leave_goto()
+
+                # to_target = v3_minus(new_position, self.target_position)
+                # if v3_sqr_magnitude(to_target) < self.sqr_wp_stoping_distance:
+                #     self._enter_explose()
+                # else:
+                #     # TODO:navigation failure
+                #     self._enter_explose()
+
+
+    def is_failed(self):
+        if not self._has_waypoint():
+            return False
+        return self._has_reached()
+
+    def is_satisfied(self):
+        # if not self._has_waypoint():
+        #     return False
+        return self._has_reached()
+
 
 class DestroyTowerBehavior:
     
-    def __init__(self, bot, target):
+    def __init__(self, bot, target, goto_behavior):
         self.bot = bot
         self.state = STATE_IDLE
         self._enter_idle()
         self.target_position = target
 
+        self.goto = goto_behavior
+        self.goto.set_destination(self.target_position)
+
     def _enter_idle(self):
-        pass
+        self.state = STATE_IDLE
 
     def _update_idle(self):
         if self.target_position is not None:
@@ -181,15 +338,17 @@ class DestroyTowerBehavior:
                 bot_id=self.bot.bot_id,
                 animation_clip='walk')
 
-        self.path = self.tile_map.find_path(
-            self.bot.position, self.target_position)
-        self.next_position = self.path.get_next_waypoint(
-            position=self.bot.position)
-        # import pdb; pdb.set_trace()
+        self.goto.activate()
 
-        if self.next_position is None:
-            print '_leave_goto:', self.bot.bot_id
-            self._leave_goto()
+        # self.path = self.tile_map.find_path(
+        #     self.bot.position, self.target_position)
+        # self.next_position = self.path.get_next_waypoint(
+        #     position=self.bot.position)
+        # # import pdb; pdb.set_trace()
+
+        # if self.next_position is None:
+        #     print '_leave_goto:', self.bot.bot_id
+        #     self._leave_goto()
 
     def on_bot_play_animation(self, sock, **response):
         pass
@@ -197,81 +356,20 @@ class DestroyTowerBehavior:
     def on_bot_play_animation_error(self, sock, error, request_id):
         pass
 
-    def _update_goto(self):
-        next_position = self.next_position
-        next_position.y = 0
-        position = self.bot.position
-        position.y = 0
-        # import pdb; pdb.set_trace()
-        # TODO
-        delta_time = 0.02
-        speed = 1.0
-        direction = v3_direction(position, next_position)
-        v3_normalize(direction)
-        movement = v3_multiple(direction, speed * delta_time)
-        new_position = v3_add(position, movement)
+    def get_next_position(self):
+        return self.goto.next_position
 
-        rotate_speed = 100
-        rot_y = self.bot.rotation
-        forward = v3_euler_y(rot_y)
-        angle = v3_angle_cw(forward, direction)
-        if -1 < angle < 1:
-            pass
-        else:
-            angle_sign = 1 if angle > 0 else -1
-            target_rot_y = rot_y + angle
-            delta_angle = angle_sign * rotate_speed * delta_time
-            new_rot_y = rot_y + delta_angle
+    def _update_goto(self, delta_time):
+        self.goto.update(delta_time)
 
-            new_angle = target_rot_y - new_rot_y
-            if new_angle * angle <= 0 or -1 < new_angle < 1:
-                new_rot_y = target_rot_y
+        if self.goto.is_satisfied():
+            self._leave_goto()
+            self._enter_explose()
 
-            self.bot.rotation = new_rot_y
-
-        # go pass
-        sqr_stoping_distance = 0.01
-        to_next = v3_minus(next_position, position)
-        new_to_next = v3_minus(next_position, new_position)
-
-        self.bot.position = new_position
-        if (v3_sqr_magnitude(new_to_next) < sqr_stoping_distance
-                or v3_dot(to_next, new_to_next) <= 0):
-            self.next_position = self.path.get_next_waypoint()
-            if self.next_position is None:
-                self._leave_goto()
-
-                to_target = v3_minus(new_position, self.target_position)
-                if v3_sqr_magnitude(to_target) < sqr_stoping_distance:
-                    self._enter_explose()
-                else:
-                    # TODO:navigation failure
-                    self._enter_explose()
-
-        if self.state == STATE_GOTO:
-            # resolve collision
-            this_bot = self.bot
-            for other in self.level1.bots:
-                if other == this_bot:
-                    continue
-                distance = v3_distance(this_bot.position, other.position)
-                if distance > 1:
-                    continue
-
-                # collision
-                to_other = v3_minus(other.position, this_bot.position)
-                if v3_dot(to_other, direction) < 0:
-                    continue
-
-                if other.get_is_moving():
-                    # push
-                    print '[+] push'
-                    push_distance = distance - 1
-                    v3_normalize(to_other)
-                    new_position = v3_add(
-                        position, v3_multiple(to_other, push_distance))
-                    this_bot.position = new_position
-
+        if self.goto.is_failed():
+            # TODO: navigation failure
+            self._leave_goto()
+            self._enter_explose()
 
     def _leave_goto(self):
         self.state = STATE_IDLE
@@ -286,11 +384,162 @@ class DestroyTowerBehavior:
     def _leave_explose(self):
         pass
 
-    def update(self):
+    def update(self, delta_time):
         if self.state == STATE_IDLE:
             self._update_idle()
         elif self.state == STATE_GOTO:
-            self._update_goto()
+            self._update_goto(delta_time)
+        elif self.state == STATE_EXPLOSE:
+            pass
+
+
+class PlayerSensor:
+    def __init__(self, player):
+        self.target = player
+
+
+class DefenseBehavior:
+
+    def __init__(self, bot, sensor, radius, goto_behavior):
+        self.bot = bot
+
+        self.init_position = bot.position
+
+        self.sensor = sensor
+        self.radius = radius
+        self.state = STATE_IDLE
+        self.goto = goto_behavior
+
+        self.sqr_attack_range = 4
+        self.stoping_angle = 0.1
+
+        self.animation_state = 'idle'
+
+    def _is_target_in_radius(self):
+        if self.sensor.target is None:
+            return False
+        target_position = self.sensor.target.position
+        return v3_distance(target_position, self.init_position) <= self.radius
+
+    def _enter_idle(self):
+        self.state = STATE_IDLE
+        self._play_animation('idle')
+    
+    def _play_animation(self, clip):
+        self.animation_state = clip
+        _remote(self, 'bot_play_animation',
+                bot_id=self.bot.bot_id,
+                animation_clip=clip)
+
+    def _update_idle(self, delta_time):
+        # no target
+        no_target = self.sensor.target is None
+        if no_target or (not self._is_target_in_radius()):
+            # TODO: movement
+            if v3_sqr_distance(self.bot.position, self.init_position) < 0.01:
+                if self.animation_state != 'idle':
+                    self._play_animation('idle')
+            else:
+                if self.animation_state != 'run':
+                    self._play_animation('run')
+                self.goto.move_toward(delta_time, self.init_position, 0.01)
+        else:
+            self._leave_idle()
+            self._enter_goto()
+
+    def _leave_idle(self):
+        pass
+
+    def _enter_goto(self):
+        print '_enter_goto:', self.bot.bot_id
+
+        self.state = STATE_GOTO
+        self._play_animation('run')
+
+        self.goto.speed = 2
+
+    def _update_goto(self, delta_time):
+        in_range, in_angle = self.goto.move_toward(
+            delta_time, self.sensor.target.position,
+            self.sqr_attack_range, self.stoping_angle)
+        if in_range and in_angle:
+            self._leave_goto()
+            if self._can_attack():
+                self._enter_attack()
+            else:
+                self._enter_idle()
+
+    def _leave_goto(self):
+        pass
+
+    def _enter_attack(self):
+        self.state = STATE_ATTACK
+        self.attack_start = time.clock()
+        self.attack_interval = 2
+
+        self._play_animation('attack')
+
+    def _can_attack(self):
+        if self.sensor.target is None:
+            return False
+
+        position = self.bot.position
+        target_position = self.sensor.target.position
+
+        in_range = v3_sqr_distance(position, target_position) <=\
+            self.sqr_attack_range
+        if not in_range:
+            return False
+
+        rot_y = self.bot.rotation
+        forward = v3_euler_y(rot_y)
+        direction = v3_direction(position, target_position)
+        angle = v3_angle_cw(forward, direction)
+        in_angle = -self.stoping_angle < angle < self.stoping_angle
+        if not in_angle:
+            return False
+
+        can_see = self.tile_map.see_through(position, target_position)
+        return can_see
+
+    def _update_attack(self):
+        """
+        """
+        if time.clock() - self.attack_start <= self.attack_interval:
+            return
+
+        target = self.sensor.target
+        if target is None:
+            self._leave_attack()
+            self._enter_idle()
+            return
+
+        target_position = target.position
+        if not self._is_target_in_radius():
+            self._leave_attack()
+            self._enter_idle()
+            return
+
+        if not self._can_attack():
+            self._leave_attack()
+            self._enter_goto()
+            return
+
+        self._enter_attack()
+
+    def _leave_attack(self):
+        pass
+
+    def get_next_position(self):
+        return self.goto.next_position
+
+    def update(self, delta_time):
+        if self.state == STATE_IDLE:
+            self._update_idle(delta_time)
+        elif self.state == STATE_GOTO:
+            self._update_goto(delta_time)
+        elif self.state == STATE_ATTACK:
+            self._update_attack()
         elif self.state == STATE_EXPLOSE:
             pass
 
@@ -299,20 +548,30 @@ class Tower:
 
     def __init__(self, id, hp, position, on_dead=None):
         self.tower_id = 0
+        self.max_hp = hp
         self.hp = hp
         self.position = position
         self.on_dead = on_dead
+        self.on_damage = None
 
     def apply_damage(self, damage):
         print '[+] apply_damage, self.hp:', self.hp, '->', self.hp - damage
         self.hp -= damage
 
-        _remote(self, 'tower_hp_sync', tower_id=self.tower_id, hp=self.hp)
+        if self.on_damage:
+            self.on_damage()
+
+        _remote(self, 'tower_hp_sync',
+                tower_id=self.tower_id, hp=self.hp,
+                max_hp=self.max_hp)
         if self.hp <= 0:
             self.hp = 0
 
             if self.on_dead:
                 self.on_dead()
+
+    def get_normalized_hp(self):
+        return self.hp / float(self.max_hp)
 
     def on_tower_hp_sync(self, sock, **response_):
         pass
@@ -323,40 +582,33 @@ class Tower:
 
 class Bot:
 
-    def __init__(self, bot_id, tile_map, target, level1):
-        self.bot_id = 0
-        # self.tile_map = tile_map
+    def __init__(self, bot_id, target):
+        self.bot_id = bot_id
         self.position = message.Vector3(x=0, y=0, z=0)
         self.rotation = 0
-        self.explose_target = target  # 
-        self.behavior = DestroyTowerBehavior(
-            self, self.explose_target.position)
-        # self.behavior.tile_map = self.tile_map
-        self.behavior.tile_map = tile_map
+        self.explose_target = target  # TODO
 
-        # TODO
-        self.behavior.level1 = level1
-
-        self.behavior.sockutil = level1.sockutil
-        self.behavior.client_sock = level1.client_sock
-
+        self.behavior = None
 
         self.dead = False
 
     def get_is_moving(self):
         return (not self.dead) and self.behavior.state == STATE_GOTO
 
-    def update(self, delta_time=0.02):
-        # self.position.x += 1 * delta_time
+    def get_is_idle(self):
+        return (not self.dead) and self.behavior.state == STATE_IDLE
+
+    def update(self, delta_time):
         if self.dead:
             return
 
-        self.behavior.update()
+        if self.behavior is not None:
+            self.behavior.update(delta_time)
 
-        _remote(self, 'bot_transform_sync',
-                bot_id=self.bot_id, position=self.position,
-                rotation=self.rotation,
-                waypoint_position=self.behavior.next_position)
+            _remote(self, 'bot_transform_sync',
+                    bot_id=self.bot_id, position=self.position,
+                    rotation=self.rotation,
+                    waypoint_position=self.behavior.get_next_position())
 
     def on_bot_transform_sync(self, sock, **response_):
         pass
@@ -368,6 +620,7 @@ class Bot:
         self.dead = True
         print '[+] explose, bot_id:', self.bot_id
         # TODO:
+        assert self.explose_target is not None
         self.explose_target.apply_damage(10)
         _remote(self, 'bot_explose',
                 bot_id=self.bot_id)
@@ -380,21 +633,13 @@ class Bot:
 
 class Waypoint:
 
-    def __init__(self, position):
+    def __init__(self, index, position):
         """
-        position: tuple (x, y)
+        index: tuple (row, column)
         """
+        self.index = index
         self.position = position
     
-    def get_vector3(self):
-        """get_vector3 -> message.Vector3
-        """
-        return message.Vector3(
-            x=self.position[0],
-            y = 0,
-            z=self.position[1]
-        )
-
 
 class Path:
 
@@ -404,10 +649,9 @@ class Path:
         self.index = 0
         self.waypoints = []
 
-
-    def _get_vector3(self, index):
-        x, y, z = self.tile_map.get_center(index)
-        return message.Vector3(x=x, y=y, z=z)
+    # def _get_vector3(self, index):
+    #     x, y, z = self.tile_map.get_center(index)
+    #     return message.Vector3(x=x, y=y, z=z)
 
     def get_next_waypoint(self, position=None):
         """get_next_waypoint -> message.Vector3, None is no more waypoint.
@@ -417,18 +661,22 @@ class Path:
             return None
 
         if not isinstance(position, message.Vector3):
-            next_position = self._get_vector3(self.waypoints[self.index].position)
+            # next_position = self._get_vector3(self.waypoints[self.index].position)
+            next_position = self.waypoints[self.index].position
             self.index += 1
             return next_position
 
         for i in range(self.index, len(self.waypoints)):
-            next_position = self._get_vector3(self.waypoints[i].position)
+            # next_position = self._get_vector3(self.waypoints[i].position)
+            next_position = self.waypoints[i].position
+            print next_position
             if self.tile_map.see_through(position, next_position):
                 self.index = i
             else:
                 break
 
-        next_position = self._get_vector3(self.waypoints[self.index].position)
+        # next_position = self._get_vector3(self.waypoints[self.index].position)
+        next_position = self.waypoints[self.index].position
         self.index += 1
         return next_position
 
@@ -466,7 +714,7 @@ class Tile:
 
 class TileMap:
 
-    def __init__(self):
+    def __init__(self, map_text=None):
         from os import path
         if path.isfile('..\map'):
             with open('..\map') as f:
@@ -475,6 +723,9 @@ class TileMap:
         if path.isfile('map'):
             with open('map') as f:
                 self.raw = json.load(f)
+
+        if map_text:
+            self.raw = json.loads(map_text)
 
         self.row_count = self.raw['RowCount']
         self.column_count = self.raw['ColumnCount']
@@ -569,12 +820,17 @@ class TileMap:
         if path is None:
             p = Path()
             p.tile_map = self
-            return Path()
+            return p
         else:
             p = Path()
             p.tile_map = self
             for point_index in range(len(path) - 1, -1, -1):
-                p.waypoints.append(Waypoint(path[point_index][0]))
+                index = path[point_index][0]
+                x, y, z = self.get_center(index)
+                p.waypoints.append(Waypoint(
+                    index, message.Vector3(x=x, y=y, z=z)))
+                # TODO: test
+            p.waypoints.append(Waypoint((-1, -1), target_pos))
             return p
 
     def _find_path(self, start_pos, target_pos, smooth=False):
@@ -661,7 +917,8 @@ class TileMap:
                 found_tile = self._get_tile(prev_index)
             return path
         else:
-            print '[+] not found'
+            pass
+            # print '[+] not found'
             # import pdb; pdb.set_trace()
 
     def smooth_path(self, target_tile, start_tile):
@@ -708,6 +965,51 @@ class Item:
         self.position = message.Vector3(x=0,y=0,z=0)
 
 
+class Player:
+
+    def __init__(self):
+        self.position = message.Vector3(x=0, y=0, z=0)
+        self.rotation = 0
+        self.max_hp = 0
+        self.hp = 0
+
+    # def apply_damage(self, damage):
+    #     _remote(self, 'bot_transform_sync
+
+
+class KillReporter:
+
+    def __init__(self):
+        self.kill_counts = {}
+        self.kill_count = 0
+        self.timeout = 2
+        self.kill_report = message.KillReport()
+
+    def add_kill(self):
+        self.last_kill = time.clock()
+
+        self.kill_count += 1
+
+        prev = self.kill_counts.get(self.kill_count, 0)
+        prev +=  1
+        self.kill_counts[self.kill_count] = prev
+        
+        self.kill_report.double_kill = self.kill_counts.get(2, 0)
+        self.kill_report.triple_kill = self.kill_counts.get(3, 0)
+        # print '+' * 10, self.kill_report.triple_kill, self.kill_count
+        _remote(self, 'kill_report_sync', kill_report=self.kill_report)
+
+    def get_triple_kill(self):
+        return self.kill_counts.get(3, 0)
+
+    def update(self, delta_time):
+        if self.kill_count == 0:
+            return
+
+        if time.clock() - self.last_kill > self.timeout:
+            self.kill_count = 0
+
+
 class ShootGameLevel1:
 
     level_id = 1
@@ -721,7 +1023,6 @@ class ShootGameLevel1:
     finished = False
 
     def __init__(self, connection, level):
-        # import pdb; pdb.set_trace()
         print '[+] ShootGameLevel1'
         self.connection = connection
 
@@ -741,6 +1042,13 @@ class ShootGameLevel1:
             self.on_tower_destroyed)
         self.explose_target.sockutil = self.sockutil
         self.explose_target.client_sock = self.client_sock
+        self.explose_target.on_damage = self._on_tower_damage
+
+        self.player = Player()
+
+        self.kill_reporter = KillReporter()
+        self.kill_reporter.sockutil = self.sockutil
+        self.kill_reporter.client_sock = self.client_sock
 
         # TODO
         self.sockutil.register_handler(
@@ -749,6 +1057,15 @@ class ShootGameLevel1:
             'update_actor_hp', self.handle_update_actor_hp, force=True);
         self.sockutil.register_handler(
             'bot_transform_sync', self.handle_bot_transform_sync, force=True);
+
+    def _on_tower_damage(self):
+        before_task3 = self.actor_level_info.star3
+        after_task3 = self._is_third_task_ok()
+        if before_task3 and (not after_task3):
+            # import pdb; pdb.set_trace()
+            self.actor_level_info.star3 = False
+            _remote(self, 'actor_level_info_sync',
+                    actor_level_info=self.actor_level_info)
 
     def on_tower_destroyed(self):
         _remote(self, 'finish_level', win=False)
@@ -769,20 +1086,24 @@ class ShootGameLevel1:
         if bot_id != -2:
             return message.BotTransformSyncRequestResponse()
 
-        if not self.ammo_item:
-            return message.BotTransformSyncRequestResponse()
-
-        item_position = self.ammo_item.position
         position = message.Vector3(**position)
-        position.y = 0
-        item_position = message.Vector3(
-            x=item_position.x, y=0, z=item_position.z)
-        if v3_distance(item_position, position) < 1:
-            print '[+] use_item'
-            self.actor.max_ammo += 18
-            dbutil.actor_update(self.connection.actordb, self.actor)
-            _remote(self, 'use_item', item_type=self.ammo_item.item_type)
-            self.ammo_item = None
+        position.y = 0  # ???
+
+        # use ammo
+        if self.ammo_item:
+            item_position = self.ammo_item.position
+            item_position = message.Vector3(
+                x=item_position.x, y=0, z=item_position.z)
+            if v3_distance(item_position, position) < 1:
+                print '[+] use_item'
+                self.actor.max_ammo += 18
+                dbutil.actor_update(self.connection.actordb, self.actor)
+                _remote(self, 'use_item', item_type=self.ammo_item.item_type)
+                self.ammo_item = None
+
+        # TODO
+        self.player.position = position
+        self.player.rotation = rotation
         return message.BotTransformSyncRequestResponse()
 
     def handle_update_actor_hp(self, actor_id, hp, max_ammo, ammo):
@@ -801,18 +1122,31 @@ class ShootGameLevel1:
 
     def handle_level0_bot_killed(self, bot_id):
         print '[+] kill'
+        before_task1 = self._is_first_task_ok()
+        self.kill_reporter.add_kill()
+        after_task1 = self._is_first_task_ok()
+        self.actor_level_info.star1 = after_task1
+
         if bot_id == -2:  # player
             _remote(self, 'finish_level', win=False)
             self.finished = True
             return
 
         self.killed += 1
-        if bot_id == self.bot_king.bot_id:
+        if bot_id == self.spider_king.bot_id:
+            self.actor_level_info.star2 = True
+            _remote(self, 'actor_level_info_sync',
+                    actor_level_info=self.actor_level_info)
+
             self.update_actor_info()
 
             _remote(self, 'finish_level', win=True)
             self.finished = True
         else:
+            if (not before_task1) and after_task1:
+                _remote(self, 'actor_level_info_sync',
+                        actor_level_info=self.actor_level_info)
+
             self.bots[bot_id - 1].dead = True
 
     def start(self, *args, **kwargs):
@@ -830,18 +1164,15 @@ class ShootGameLevel1:
             (20, 0, 8, 0),
         ]
 
-        self.bot_count = 0
         self.spawn_interval = 15
         self.time_since_start = time.clock()
         self.next_spawn_time = self.time_since_start + self.spawn_interval
 
         king_spot = (12, 0, 4, 90)
-        self.bot_king = self._spawn_bot(
+        self.spider_king = self._spawn_bot(
                 'spider_king', x=king_spot[0], y=king_spot[1],
                 z=king_spot[2], rot_y=king_spot[3])
-        self.bots.pop()  # TODO
 
-        # import pdb; pdb.set_trace()
         for spot in self.spawn_spot:
             self._spawn_bot('spider_remote', x=spot[0], y=spot[1],
                             z=spot[2], rot_y=spot[3])
@@ -850,6 +1181,24 @@ class ShootGameLevel1:
         self.ammo_item.position = message.Vector3(x=25.14, y=1.26, z=14.89)
         _remote(self, 'spawn_item', item_type=self.ammo_item.item_type,
                 position=self.ammo_item.position)
+
+        actor_level_info = message.ActorLevelInfo()
+        actor_level_info.actor_id = self.actor.actor_id
+        actor_level_info.level_id = self.level.level_id
+        # actor_level_info.passed = True
+        actor_level_info.star1 = False
+        actor_level_info.star2 = False
+        actor_level_info.star3 = self._is_third_task_ok()
+
+        self.actor_level_info = actor_level_info
+        _remote(self, 'actor_level_info_sync',
+                actor_level_info=self.actor_level_info)
+
+    def _is_first_task_ok(self):
+        return self.kill_reporter.get_triple_kill() >= 1
+
+    def _is_third_task_ok(self):
+        return self.explose_target.get_normalized_hp() >= 0.5
 
     def on_spawn_item(self, sock, **response_):
         print 'on_spawn_item:', response_['request_id']
@@ -861,34 +1210,65 @@ class ShootGameLevel1:
         self.actor.experience += 1000
         self.actor.gold += 100
         self.actor.level += 1
-        # self.actor.actordb = self.connection.actordb
-        # self.actor.update()
         dbutil.actor_update(self.connection.actordb, self.actor)
 
-        actor_level_info = message.ActorLevelInfo()
-        actor_level_info.actor_id = self.actor.actor_id
-        actor_level_info.level_id = self.level.level_id
-        actor_level_info.passed = True
-        actor_level_info.star1 = True
-        actor_level_info.star2= True
-        actor_level_info.star3= True
-        # actor_level_info.actorleveldb = self.connection.actorleveldb
-        # actor_level_info.update()
+        # actor_level_info = message.ActorLevelInfo()
+        # actor_level_info.actor_id = self.actor.actor_id
+        # actor_level_info.level_id = self.level.level_id
+        # actor_level_info.passed = True
+        # actor_level_info.star1 = True
+        # actor_level_info.star2= True
+        # actor_level_info.star3= True
+        self.actor_level_info.passed = self.actor_level_info.star2
+
+        actor_level_info = dbutil.actor_level_info_get(
+            self.connection.actorleveldb, self.actor_level_info)
+        actor_level_info.star1 =\
+            actor_level_info.star1 or self.actor_level_info.star1
+        actor_level_info.star2 = \
+            actor_level_info.star2 or self.actor_level_info.star2
+        actor_level_info.star3 = \
+            actor_level_info.star3 or self.actor_level_info.star3
+        actor_level_info.passed = \
+            actor_level_info.passed or self.actor_level_info.passed
+            
         dbutil.actor_level_info_update(
-            self.connection.actorleveldb,
-            actor_level_info)
+            self.connection.actorleveldb, actor_level_info)
 
     def _spawn_bot(self, bot_type,
                    x=0, y=0, z=0, rot_y=0):
-        self.bot_count += 1
-        bot = Bot(self.bot_id, self.tile_map, self.explose_target, self)
-        bot.bot_id = self.bot_id
+        # create bot
+        bot = Bot(self.bot_id, self.explose_target)
         bot.position = message.Vector3(x=x, y=y, z=z)
         bot.rotation = rot_y
         bot.sockutil = self.sockutil
         bot.client_sock = self.client_sock
 
-        self.bots.append(bot)
+        goto = GotoBehavior(bot, self.tile_map)
+        goto.level1 = self
+
+        # behavior
+        if bot_type == 'spider_remote':
+            destroy_tower = DestroyTowerBehavior(
+                bot, self.explose_target.position, goto)
+            destroy_tower.tile_map = self.tile_map
+            destroy_tower.level1 = self
+            destroy_tower.sockutil = self.sockutil
+            destroy_tower.client_sock = self.client_sock
+
+            bot.behavior = destroy_tower
+
+            self.bots.append(bot)
+        elif bot_type == 'spider_king':
+            sensor = PlayerSensor(self.player)
+            defense = DefenseBehavior(bot, sensor, 8, goto)
+            defense.sockutil = self.sockutil
+            defense.client_sock = self.client_sock
+            defense.tile_map = self.tile_map
+
+            bot.behavior = defense
+        else:
+            raise NotImplementedError('No such bot_type: %s' % bot_type)
 
         _remote_callback(
             self, 'spawn_bot', bot_id=self.bot_id, bot_type=bot_type,
@@ -903,22 +1283,25 @@ class ShootGameLevel1:
     def on_spawn_bot_error(self, sock, error, request_id):
         print '[-] on_create_error, error:', error, 'request_id:', request_id
 
-    def update(self):
+    def update(self, delta_time):
+        self.kill_reporter.update(delta_time)
+
         if self.finished or (not self.entered):
             return
         # import pdb; pdb.set_trace()
         
-        if (self.bot_count < self.max_bot_count and time.clock() > self.next_spawn_time):
-            print '[+] spawn'
+        if time.clock() > self.next_spawn_time:
             self.next_spawn_time += self.spawn_interval
-            # self._spawn_bot('spider')
-
-            for spot in self.spawn_spot:
-                self._spawn_bot('spider_remote', x=spot[0], y=spot[1],
-                                z=spot[2], rot_y=spot[3])
+            if self.spider_king.get_is_idle():
+                print '[+] spawn'
+                for spot in self.spawn_spot:
+                    self._spawn_bot('spider_remote', x=spot[0], y=spot[1],
+                                    z=spot[2], rot_y=spot[3])
 
         for bot in self.bots:
-            bot.update()
+            bot.update(delta_time)
+
+        self.spider_king.update(delta_time)
 
     def destroy(self):
         pass

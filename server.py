@@ -4,6 +4,7 @@
 import time
 import select
 import argparse
+from errno import *
 from socket import *
 
 import dbutil
@@ -282,7 +283,7 @@ class Connection:
             self.shoot_game = None
 
     def recv_data(self, data):
-        print '[+] connection:%d, recv_data:%s' % (self.instance_id, data)
+        # print '[+] connection:%d, recv_data:%s' % (self.instance_id, data)
         if len(data) == 0:
             # import pdb; pdb.set_trace()
             self.on_remote_close()
@@ -755,9 +756,9 @@ class Connection:
             # break
         return tokens[0]
 
-    def update(self):
+    def update(self, delta_time):
         if self.shoot_game:
-            self.shoot_game.update()
+            self.shoot_game.update(delta_time)
 
 
 class Server:
@@ -886,7 +887,7 @@ class Server:
                     print '[-] ex:%s, delect conneciton' % ex
                     self._del_connection(self.read_socks[read_sock])
 
-        time.sleep(0.02)
+        # time.sleep(0.02)
 
     def main(self, args):
         """main flow ([+] are requests)
@@ -952,8 +953,12 @@ class Server:
                 self._process_command(c)
 
         try:
+            delta_time = 0.02
+            start_time = time.clock()
+            target_delta_time = 1.0 / 60
+
             while True:
-                # TODO
+                # print delta_time
                 command = None
                 if args.command:
                     print '>',
@@ -966,7 +971,7 @@ class Server:
                 error_connections = []
                 for k, v in self.connections.iteritems():
                     try:
-                        v.update()
+                        v.update(delta_time)
                     except:
                         print '[-] error:', (k, v)
                         import traceback
@@ -976,6 +981,15 @@ class Server:
                 for k in error_connections:
                     connection = self.connections.pop(k)
                     self._del_connection(connection)
+
+                cur_time = time.clock()
+                delta_time = cur_time - start_time
+                diff = target_delta_time - delta_time
+                if diff > 0:
+                    time.sleep(diff)
+                cur_time = time.clock()
+                delta_time = cur_time - start_time
+                start_time = cur_time
         except (Exception, KeyboardInterrupt) as ex:
             import traceback
             traceback.print_exc()

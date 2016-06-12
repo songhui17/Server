@@ -58,6 +58,16 @@ class ShootGameLevel0:
             return
 
         self.killed += 1
+        
+        if self.killed == 1:
+            self.actor_level_info.star1 = True
+        elif self.killed == 2:
+            self.actor_level_info.star2 = True
+        elif self.killed == 3:
+            self.actor_level_info.star3 = True
+        _remote(self, 'actor_level_info_sync',
+                actor_level_info=self.actor_level_info)
+
         if self.killed == self.max_bot_count:
             print '[+] finish level0 bot_count=%d, max_bot_count=%d'\
                 % (self.bot_count, self.max_bot_count)
@@ -117,6 +127,18 @@ class ShootGameLevel0:
         self._spawn_bot('spider', x=spot[0], y=spot[1],
                         z=spot[2], rot_y=spot[3])
 
+        actor_level_info = message.ActorLevelInfo()
+        actor_level_info.actor_id = self.actor.actor_id
+        actor_level_info.level_id = self.level.level_id
+        # actor_level_info.passed = True
+        actor_level_info.star1 = False
+        actor_level_info.star2 = False
+        actor_level_info.star3 = False
+
+        self.actor_level_info = actor_level_info
+        _remote(self, 'actor_level_info_sync',
+                actor_level_info=self.actor_level_info)
+
     def update_actor_info(self):
         self.actor.experience += 1000
         self.actor.gold += 100
@@ -125,15 +147,26 @@ class ShootGameLevel0:
         # self.actor.update()
         dbutil.actor_update(self.connection.actordb, self.actor)
 
-        actor_level_info = message.ActorLevelInfo()
-        actor_level_info.actor_id = self.actor.actor_id
-        actor_level_info.level_id = self.level.level_id
-        actor_level_info.passed = True
-        actor_level_info.star1 = True
-        actor_level_info.star2= True
-        actor_level_info.star3= True
-        # actor_level_info.actorleveldb = self.connection.actorleveldb
-        # actor_level_info.update()
+        # actor_level_info = message.ActorLevelInfo()
+        # actor_level_info.actor_id = self.actor.actor_id
+        # actor_level_info.level_id = self.level.level_id
+        # actor_level_info.passed = True
+        # actor_level_info.star1 = True
+        # actor_level_info.star2= True
+        # actor_level_info.star3= True
+        self.actor_level_info.passed = self.actor_level_info.star3
+
+        actor_level_info = dbutil.actor_level_info_get(
+            self.connection.actorleveldb, self.actor_level_info)
+        actor_level_info.star1 =\
+            actor_level_info.star1 or self.actor_level_info.star1
+        actor_level_info.star2 = \
+            actor_level_info.star2 or self.actor_level_info.star2
+        actor_level_info.star3 = \
+            actor_level_info.star3 or self.actor_level_info.star3
+        actor_level_info.passed = \
+            actor_level_info.passed or self.actor_level_info.passed
+
         dbutil.actor_level_info_update(
             self.connection.actorleveldb,
             actor_level_info)
@@ -152,7 +185,7 @@ class ShootGameLevel0:
     def on_spawn_bot_error(self, sock, error, request_id):
         print '[-] on_create_error, error:', error, 'request_id:', request_id
 
-    def update(self):
+    def update(self, delta_time):
         pass
 
     def destroy(self):

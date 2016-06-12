@@ -3,6 +3,7 @@
 
 __all__=['validate_username', 'validate_password']
 
+import message
 from servererrno import *
 
 def validate_username(username_):
@@ -143,6 +144,16 @@ def actor_level_info_update(actorleveldb, info):
     """
     print '[+] update actorlveldb'
     actorleveldb[(info.actor_id, info.level_id)] = info.dump()
+
+
+def actor_level_info_get(actorleveldb, info):
+    d = actorleveldb.get((info.actor_id, info.level_id), info)
+    if d == info:
+        return d
+    else:
+        d = message.ActorLevelInfo(**d)
+        return d
+
 
 if __name__ == '__main__':
     import doctest
